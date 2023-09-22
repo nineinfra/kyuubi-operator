@@ -1,0 +1,12 @@
+apiVersion: kyuubi.nineinfra.tech/v1alpha1
+kind: KyuubiCluster
+metadata:
+  labels:
+    app.kubernetes.io/name: kyuubicluster
+    app.kubernetes.io/instance: kyuubicluster-sample
+    app.kubernetes.io/part-of: kyuubi-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: kyuubi-operator
+  name: kyuubicluster-sample
+spec:
+  # TODO(user): Add fields here

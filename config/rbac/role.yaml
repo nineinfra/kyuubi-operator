@@ -1,0 +1,32 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - kyuubi.nineinfra.tech
+  resources:
+  - kyuubiclusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - kyuubi.nineinfra.tech
+  resources:
+  - kyuubiclusters/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - kyuubi.nineinfra.tech
+  resources:
+  - kyuubiclusters/status
+  verbs:
+  - get
+  - patch
+  - update

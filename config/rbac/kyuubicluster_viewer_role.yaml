@@ -1,0 +1,27 @@
+# permissions for end users to view kyuubiclusters.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: kyuubicluster-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: kyuubi-operator
+    app.kubernetes.io/part-of: kyuubi-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: kyuubicluster-viewer-role
+rules:
+- apiGroups:
+  - kyuubi.nineinfra.tech
+  resources:
+  - kyuubiclusters
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - kyuubi.nineinfra.tech
+  resources:
+  - kyuubiclusters/status
+  verbs:
+  - get

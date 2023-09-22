@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- kyuubi_v1alpha1_kyuubicluster.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples
