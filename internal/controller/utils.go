@@ -1,14 +1,22 @@
 package controller
 
 import (
-	"reflect"
 	"strings"
 
 	"github.com/go-xmlfmt/xmlfmt"
 )
 
-func compareConf(srcConf map[string]string, dstConf map[string]string) bool {
-	return reflect.DeepEqual(srcConf, dstConf)
+func compareConf(srcConf, dstConf map[string]string) bool {
+	if len(srcConf) != len(dstConf) {
+		return false
+	}
+	for key, valueSrc := range srcConf {
+		valueDst, ok := dstConf[key]
+		if !ok || valueSrc != valueDst {
+			return false
+		}
+	}
+	return true
 }
 
 func map2String(kv map[string]string) string {

@@ -59,7 +59,6 @@ type KyuubiClusterReconciler struct {
 func (r *KyuubiClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	// TODO(user): your logic here
 	var kyuubi kyuubiv1alpha1.KyuubiCluster
 	err := r.Get(ctx, req.NamespacedName, &kyuubi)
 	if err != nil {
@@ -74,7 +73,7 @@ func (r *KyuubiClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	requestName := requestArray[1]
 
 	if requestName == kyuubi.Name {
-		//logger.Info("create Or Update Components")
+		logger.Info("create Or Update Clusters")
 		err = r.createOrUpdateClusters(ctx, &kyuubi, logger)
 		if err != nil {
 			logger.Info("Error occurred during create Or Update Components")
@@ -94,13 +93,13 @@ func (r *KyuubiClusterReconciler) createOrUpdateClusters(ctx context.Context, ky
 
 	err = r.createOrUpdateKyuubiConfigmap(ctx, kyuubi, logger)
 	if err != nil {
-		logger.Error(err, "Error occurred during createOrUpdateConfigmap")
+		logger.Error(err, "Error occurred during createOrUpdateKyuubiConfigmap")
 		return err
 	}
 
 	err = r.createOrUpdateClusterRefsConfigmap(ctx, kyuubi, logger)
 	if err != nil {
-		logger.Error(err, "Error occurred during createOrUpdateConfigmap")
+		logger.Error(err, "Error occurred during createOrUpdateClusterRefsConfigmap")
 		return err
 	}
 
@@ -119,7 +118,7 @@ func (r *KyuubiClusterReconciler) constructServiceAccount(kyuubi *kyuubiv1alpha1
 			Namespace: kyuubi.Namespace,
 			Labels: map[string]string{
 				"cluster": kyuubi.Name,
-				"app":     "kyuubiOperator",
+				"app":     "kyuubi",
 			},
 		},
 	}
@@ -141,7 +140,7 @@ func (r *KyuubiClusterReconciler) createOrUpdateServiceAccount(ctx context.Conte
 			return err
 		}
 	} else if !reflect.DeepEqual(existingKyuubeSa, desiredKyuubiSa) {
-		logger.Info("updating kyuubi")
+		logger.Info("updating kyuubi sa")
 	}
 	return nil
 }
@@ -152,7 +151,7 @@ func (r *KyuubiClusterReconciler) constructRole(kyuubi *kyuubiv1alpha1.KyuubiClu
 			Namespace: kyuubi.Namespace,
 			Labels: map[string]string{
 				"cluster": kyuubi.Name,
-				"app":     "kyuubiOperator",
+				"app":     "kyuubi",
 			},
 		},
 		Rules: []rbacv1.PolicyRule{
@@ -193,7 +192,7 @@ func (r *KyuubiClusterReconciler) createOrUpdateRole(ctx context.Context, kyuubi
 			return err
 		}
 	} else if !reflect.DeepEqual(existingKyuubeRole, desiredKyuubiRole) {
-		logger.Info("updating kyuubi")
+		logger.Info("updating kyuubi role")
 	}
 	return nil
 }
@@ -205,7 +204,7 @@ func (r *KyuubiClusterReconciler) constructRoleBinding(kyuubi *kyuubiv1alpha1.Ky
 			Namespace: kyuubi.Namespace,
 			Labels: map[string]string{
 				"cluster": kyuubi.Name,
-				"app":     "kyuubiOperator",
+				"app":     "kyuubi",
 			},
 		},
 		Subjects: []rbacv1.Subject{
@@ -226,7 +225,7 @@ func (r *KyuubiClusterReconciler) constructRoleBinding(kyuubi *kyuubiv1alpha1.Ky
 func (r *KyuubiClusterReconciler) createOrUpdateRoleBinding(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, logger logr.Logger) error {
 	desiredKyuubiRoleBinding, _ := r.constructRoleBinding(kyuubi)
 
-	existingKyuubeRoleBinding := &rbacv1.Role{}
+	existingKyuubeRoleBinding := &rbacv1.RoleBinding{}
 
 	err := r.Get(ctx, client.ObjectKeyFromObject(desiredKyuubiRoleBinding), existingKyuubeRoleBinding)
 	if err != nil && !errors.IsNotFound(err) {
@@ -238,7 +237,7 @@ func (r *KyuubiClusterReconciler) createOrUpdateRoleBinding(ctx context.Context,
 			return err
 		}
 	} else if !reflect.DeepEqual(existingKyuubeRoleBinding, desiredKyuubiRoleBinding) {
-		logger.Info("updating kyuubi")
+		logger.Info("updating kyuubi rolebinding")
 	}
 	return nil
 }
@@ -256,7 +255,7 @@ func (r *KyuubiClusterReconciler) createOrUpdateK8sResources(ctx context.Context
 	}
 	err = r.createOrUpdateRoleBinding(ctx, kyuubi, logger)
 	if err != nil {
-		logger.Error(err, "Error occurred during createOrUpdateRole")
+		logger.Error(err, "Error occurred during createOrUpdateRoleBinding")
 		return err
 	}
 	return nil
@@ -269,14 +268,14 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 			Namespace: kyuubi.Namespace,
 			Labels: map[string]string{
 				"cluster": kyuubi.Name,
-				"app":     "kyuubiOperator",
+				"app":     "kyuubi",
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"cluster": kyuubi.Name,
-					"app":     "kyuubiOperator",
+					"app":     "kyuubi",
 				},
 			},
 			ServiceName: kyuubi.Name + "-kyuubi",
@@ -285,7 +284,7 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						"cluster": kyuubi.Name,
-						"app":     "kyuubiOperator",
+						"app":     "kyuubi",
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -452,7 +451,7 @@ func (r *KyuubiClusterReconciler) createOrUpdateKyuubi(ctx context.Context, kyuu
 			return err
 		}
 	} else if !reflect.DeepEqual(existingKyuubeWorkload, desiredKyuubeWorkload) {
-		logger.Info("updating kyuubi")
+		logger.Info("updating kyuubi workload")
 	}
 	return nil
 }
@@ -463,7 +462,8 @@ func (r *KyuubiClusterReconciler) desiredClusterRefsConfigMap(kyuubi *kyuubiv1al
 			Name:      kyuubi.Name + "-cluserrefs",
 			Namespace: kyuubi.Namespace,
 			Labels: map[string]string{
-				"app": kyuubi.Name,
+				"cluster": kyuubi.Name,
+				"app":     kyuubi.Name,
 			},
 		},
 		Data: map[string]string{},
@@ -521,7 +521,7 @@ func (r *KyuubiClusterReconciler) createOrUpdateClusterRefsConfigmap(ctx context
 			}
 		}
 	} else if !compareConf(desiredConfigMap.Data, existingConfigMap.Data) {
-		logger.Info("updating configmap")
+		logger.Info("updating clusterrefs configmap")
 		existingConfigMap.Data = desiredConfigMap.Data
 		if err := r.Update(ctx, existingConfigMap); err != nil {
 			return err
@@ -538,7 +538,8 @@ func (r *KyuubiClusterReconciler) desiredKyuubiConfigMap(kyuubi *kyuubiv1alpha1.
 			Name:      kyuubi.Name + "-kyuubi",
 			Namespace: kyuubi.Namespace,
 			Labels: map[string]string{
-				"app": kyuubi.Name,
+				"cluster": kyuubi.Name,
+				"app":     "kyuubi",
 			},
 		},
 		Data: map[string]string{
@@ -583,7 +584,7 @@ func (r *KyuubiClusterReconciler) createOrUpdateKyuubiConfigmap(ctx context.Cont
 			}
 		}
 	} else if !compareConf(desiredConfigMap.Data, existingConfigMap.Data) {
-		logger.Info("updating configmap")
+		logger.Info("updating kyuubi configmap")
 		existingConfigMap.Data = desiredConfigMap.Data
 		if err := r.Update(ctx, existingConfigMap); err != nil {
 			return err
