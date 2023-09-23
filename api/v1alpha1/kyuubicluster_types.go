@@ -70,7 +70,7 @@ type SparkCluster struct {
 
 type MetastoreCluster struct {
 	// +optional
-	HiveSite map[string]string `json:"hiveSizte,omitempty"`
+	HiveSite map[string]string `json:"hiveSite,omitempty"`
 }
 
 type HdfsCluster struct {
@@ -84,14 +84,14 @@ type ClusterRef struct {
 	// Name is the name of the referenced cluster
 	Name string `json:"name"`
 	// +kubebuilder:validation:Enum={spark,metastore,hdfs,flink}
-	ClusterType ClusterType `json:"clusterType"`
+	Type ClusterType `json:"type"`
 	// ClusterInfo is the detail info of the cluster of the clustertype
 	// +optional
-	SparkCluster SparkCluster `json:"sparkCluster"`
+	Spark SparkCluster `json:"spark"`
 	// +optional
-	MetastoreCluster MetastoreCluster `json:"metastoreCluster"`
+	Metastore MetastoreCluster `json:"metastore"`
 	// +optional
-	HdfsCluster HdfsCluster `json:"hdfsCluster"`
+	Hdfs HdfsCluster `json:"hdfs"`
 }
 
 // KyuubiClusterSpec defines the desired state of KyuubiCluster
