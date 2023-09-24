@@ -110,7 +110,6 @@ spec:
                   type: string
                 type: object
               kyuubiImage:
-                description: OperatorImage  ImageConfig       `json:"operatorImage"`
                 properties:
                   pullPolicy:
                     default: Always
@@ -142,8 +141,6 @@ spec:
                 - replicas
                 type: object
               kyuubiVersion:
-                description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                  Important: Run "make" to regenerate code after modifying this file'
                 type: string
             required:
             - clusterRefs
@@ -159,9 +156,6 @@ spec:
                 format: date-time
                 type: string
               exposedInfos:
-                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
-                  of cluster Important: Run "make" to regenerate code after modifying
-                  this file'
                 items:
                   properties:
                     exposedType:

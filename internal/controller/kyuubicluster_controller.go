@@ -459,7 +459,7 @@ func (r *KyuubiClusterReconciler) createOrUpdateKyuubi(ctx context.Context, kyuu
 func (r *KyuubiClusterReconciler) desiredClusterRefsConfigMap(kyuubi *kyuubiv1alpha1.KyuubiCluster) (*corev1.ConfigMap, error) {
 	cmTemplate := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kyuubi.Name + "-cluserrefs",
+			Name:      kyuubi.Name + "-clusterrefs",
 			Namespace: kyuubi.Namespace,
 			Labels: map[string]string{
 				"cluster": kyuubi.Name,
@@ -472,7 +472,7 @@ func (r *KyuubiClusterReconciler) desiredClusterRefsConfigMap(kyuubi *kyuubiv1al
 	for _, cluster := range kyuubi.Spec.ClusterRefs {
 		switch cluster.Type {
 		case kyuubiv1alpha1.SparkClusterType:
-			var sparkConf map[string]string
+			sparkConf := make(map[string]string)
 			sparkConf["spark.kubernetes.container.image"] = cluster.Spark.SparkImage.Repository + ":" + cluster.Spark.SparkImage.Tag
 			sparkConf["spark.kubernetes.namespace"] = kyuubi.Namespace
 			cmTemplate.Data["spark-defaults.conf"] = map2String(sparkConf)

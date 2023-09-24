@@ -17,13 +17,13 @@ spec:
     replicas: 1
   kyuubiConf:
     kyuubi.kubernetes.namespace: dwh
-    kyuubi.frontend.connection.url.use.hostname: false
-    kyuubi.frontend.thrift.binary.bind.port: 10009
-    kyuubi.frontend.thrift.http.bind.port: 10010
-    kyuubi.frontend.rest.bind.port: 10099
-    kyuubi.frontend.mysql.bind.port: 3309
+    kyuubi.frontend.connection.url.use.hostname: 'false'
+    kyuubi.frontend.thrift.binary.bind.port: '10009'
+    kyuubi.frontend.thrift.http.bind.port: '10010'
+    kyuubi.frontend.rest.bind.port: '10099'
+    kyuubi.frontend.mysql.bind.port: '3309'
     kyuubi.frontend.protocols: REST,THRIFT_BINARY
-    kyuubi.metrics.enabled: false
+    kyuubi.metrics.enabled: 'false'
   clusterRefs:
     - name: spark
       type: spark
@@ -38,12 +38,11 @@ spec:
       hdfs:
         coreSite:
           fs.defaultFS: hdfs://hdfs:9820
+        hdfsSite:
+          dfs.client.block.write.retries: '3'
     - name: metastore
       type: metastore
       metastore:
         hiveSite:
           hive.metastore.uris: thrift://hive-metastore:9083
           hive.metastore.warehouse.dir: /user/hive/warehouse
-
-
-
