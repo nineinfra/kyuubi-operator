@@ -9,4 +9,41 @@ metadata:
     app.kubernetes.io/created-by: kyuubi-operator
   name: kyuubicluster-sample
 spec:
-  # TODO(user): Add fields here
+  kyuubiVersion: 1.8.1
+  kyuubiImage:
+    repository: 172.18.123.24:30003/library/kyuubi
+    tag: v1.8.1
+  kyuubiResource:
+    replicas: 1
+  kyuubiConf:
+    kyuubi.kubernetes.namespace: dwh
+    kyuubi.frontend.connection.url.use.hostname: false
+    kyuubi.frontend.thrift.binary.bind.port: 10009
+    kyuubi.frontend.thrift.http.bind.port: 10010
+    kyuubi.frontend.rest.bind.port: 10099
+    kyuubi.frontend.mysql.bind.port: 3309
+    kyuubi.frontend.protocols: REST,THRIFT_BINARY
+    kyuubi.metrics.enabled: false
+  clusterRefs:
+    - name: spark
+      type: spark
+      spark:
+        sparkMaster: k8s
+        sparkImage:
+          repository: 172.18.123.24:30003/library/spark
+          tag: v3.2.4
+        sparkNamespace: dwh
+    - name: hdfs
+      type: hdfs
+      hdfs:
+        coreSite:
+          fs.defaultFS: hdfs://hdfs:9820
+    - name: metastore
+      type: metastore
+      metastore:
+        hiveSite:
+          hive.metastore.uris: thrift://hive-metastore:9083
+          hive.metastore.warehouse.dir: /user/hive/warehouse
+
+
+

@@ -96,10 +96,7 @@ type ClusterRef struct {
 
 // KyuubiClusterSpec defines the desired state of KyuubiCluster
 type KyuubiClusterSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-	KyuubiVersion string `json:"kyuubiVersion"`
-	// OperatorImage  ImageConfig       `json:"operatorImage"`
+	KyuubiVersion  string            `json:"kyuubiVersion"`
 	KyuubiImage    ImageConfig       `json:"kyuubiImage"`
 	KyuubiResource ResourceConfig    `json:"kyuubiResource"`
 	KyuubiConf     map[string]string `json:"kyuubiConf"`
@@ -137,8 +134,6 @@ type ExposedInfo struct {
 
 // KyuubiClusterStatus defines the observed state of KyuubiCluster
 type KyuubiClusterStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 	ExposedInfos []ExposedInfo `json:"exposedInfos"`
 	CreationTime metav1.Time   `json:"creationTime"`
 }
