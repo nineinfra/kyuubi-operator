@@ -315,27 +315,27 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      kyuubi.Name + "-kyuubi",
-									MountPath: "/opt/kyuubi/conf",
+									MountPath: "/opt/kyuubi/conf/kyuubi-defaults.conf",
 									SubPath:   "kyuubi-defaults.conf",
 								},
 								{
 									Name:      kyuubi.Name + "-spark",
-									MountPath: "/opt/spark/conf",
+									MountPath: "/opt/spark/conf/spark-defaults.conf",
 									SubPath:   "spark-defaults.conf",
 								},
 								{
 									Name:      kyuubi.Name + "-hdfssite",
-									MountPath: "/opt/spark/conf",
+									MountPath: "/opt/spark/conf/hdfs-site.xml",
 									SubPath:   "hdfs-site.xml",
 								},
 								{
 									Name:      kyuubi.Name + "-coresite",
-									MountPath: "/opt/spark/conf",
+									MountPath: "/opt/spark/conf/core-site.xml",
 									SubPath:   "core-site.xml",
 								},
 								{
 									Name:      kyuubi.Name + "-hivesite",
-									MountPath: "/opt/spark/conf",
+									MountPath: "/opt/spark/conf/hive-site.xml",
 									SubPath:   "hive-site.xml",
 								},
 							},
