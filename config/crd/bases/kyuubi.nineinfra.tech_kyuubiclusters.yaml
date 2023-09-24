@@ -37,47 +37,32 @@ spec:
               clusterRefs:
                 items:
                   properties:
-                    clusterType:
-                      enum:
-                      - spark
-                      - metastore
-                      - hdfs
-                      - flink
-                      type: string
-                    hdfsClusterInfo:
+                    hdfs:
                       properties:
-                        defaultFSPort:
-                          type: integer
-                        defaultFSUrl:
-                          type: string
-                      required:
-                      - defaultFSPort
-                      - defaultFSUrl
+                        coreSite:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        hdfsSite:
+                          additionalProperties:
+                            type: string
+                          type: object
                       type: object
-                    metastoreClusterInfo:
+                    metastore:
                       properties:
-                        metastoreUrl:
-                          type: string
-                        port:
-                          type: integer
-                        protocol:
-                          type: string
-                        warehouseDir:
-                          type: string
-                      required:
-                      - metastoreUrl
-                      - port
-                      - protocol
-                      - warehouseDir
+                        hiveSite:
+                          additionalProperties:
+                            type: string
+                          type: object
                       type: object
                     name:
                       description: Name is the name of the referenced cluster
                       type: string
-                    sparkClusterInfo:
+                    spark:
                       description: ClusterInfo is the detail info of the cluster of
                         the clustertype
                       properties:
-                        imageConfig:
+                        sparkImage:
                           properties:
                             pullPolicy:
                               default: Always
@@ -105,81 +90,74 @@ spec:
                         sparkNamespace:
                           type: string
                       required:
-                      - imageConfig
+                      - sparkImage
                       - sparkNamespace
                       type: object
+                    type:
+                      enum:
+                      - spark
+                      - metastore
+                      - hdfs
+                      - flink
+                      type: string
                   required:
-                  - clusterType
                   - name
+                  - type
                   type: object
                 type: array
-              commonConfig:
-                description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                  Important: Run "make" to regenerate code after modifying this file'
+              kyuubiConf:
+                additionalProperties:
+                  type: string
+                type: object
+              kyuubiImage:
+                description: OperatorImage  ImageConfig       `json:"operatorImage"`
                 properties:
-                  kyuubiImageConfig:
-                    properties:
-                      pullPolicy:
-                        default: Always
-                        description: 'Image pull policy. One of `Always, Never, IfNotPresent`,
-                          default: `Always`.'
-                        enum:
-                        - Always
-                        - Never
-                        - IfNotPresent
-                        type: string
-                      pullSecret:
-                        description: Secrets for image pull.
-                        type: string
-                      repository:
-                        type: string
-                      tag:
-                        description: 'Image tag. Usually the vesion of the kyuubi,
-                          default: `latest`.'
-                        type: string
-                    required:
-                    - repository
-                    type: object
-                  kyuubiVersion:
+                  pullPolicy:
+                    default: Always
+                    description: 'Image pull policy. One of `Always, Never, IfNotPresent`,
+                      default: `Always`.'
+                    enum:
+                    - Always
+                    - Never
+                    - IfNotPresent
                     type: string
-                  operatorImageConfig:
-                    properties:
-                      pullPolicy:
-                        default: Always
-                        description: 'Image pull policy. One of `Always, Never, IfNotPresent`,
-                          default: `Always`.'
-                        enum:
-                        - Always
-                        - Never
-                        - IfNotPresent
-                        type: string
-                      pullSecret:
-                        description: Secrets for image pull.
-                        type: string
-                      repository:
-                        type: string
-                      tag:
-                        description: 'Image tag. Usually the vesion of the kyuubi,
-                          default: `latest`.'
-                        type: string
-                    required:
-                    - repository
-                    type: object
+                  pullSecret:
+                    description: Secrets for image pull.
+                    type: string
+                  repository:
+                    type: string
+                  tag:
+                    description: 'Image tag. Usually the vesion of the kyuubi, default:
+                      `latest`.'
+                    type: string
+                required:
+                - repository
+                type: object
+              kyuubiResource:
+                properties:
                   replicas:
+                    format: int32
                     type: integer
                 required:
-                - kyuubiImageConfig
-                - kyuubiVersion
-                - operatorImageConfig
                 - replicas
                 type: object
+              kyuubiVersion:
+                description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+                  Important: Run "make" to regenerate code after modifying this file'
+                type: string
             required:
             - clusterRefs
-            - commonConfig
+            - kyuubiConf
+            - kyuubiImage
+            - kyuubiResource
+            - kyuubiVersion
             type: object
           status:
             description: KyuubiClusterStatus defines the observed state of KyuubiCluster
             properties:
+              creationTime:
+                format: date-time
+                type: string
               exposedInfos:
                 description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
                   of cluster Important: Run "make" to regenerate code after modifying
@@ -218,6 +196,7 @@ spec:
                   type: object
                 type: array
             required:
+            - creationTime
             - exposedInfos
             type: object
         type: object
