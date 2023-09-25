@@ -37,12 +37,12 @@ spec:
       type: hdfs
       hdfs:
         coreSite:
-          fs.defaultFS: hdfs://hdfs:9820
+          fs.defaultFS: hdfs://hdfs.dwh.svc:9820
         hdfsSite:
           dfs.client.block.write.retries: '3'
     - name: metastore
       type: metastore
       metastore:
         hiveSite:
-          hive.metastore.uris: thrift://hive-metastore:9083
+          hive.metastore.uris: thrift://hive-metastore.dwh.svc:9083
           hive.metastore.warehouse.dir: /user/hive/warehouse
