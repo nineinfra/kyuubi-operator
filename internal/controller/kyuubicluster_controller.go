@@ -341,7 +341,8 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 							},
 						},
 					},
-					RestartPolicy: corev1.RestartPolicyAlways,
+					RestartPolicy:      corev1.RestartPolicyAlways,
+					ServiceAccountName: kyuubi.Name + "-kyuubi",
 					Volumes: []corev1.Volume{
 						{
 							Name: kyuubi.Name + "-kyuubi",
