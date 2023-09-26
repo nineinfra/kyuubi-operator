@@ -31,8 +31,7 @@ func map2String(kv map[string]string) string {
 }
 
 func map2Xml(properties map[string]string) string {
-	var res string = `<configuration>
-                     `
+	var res string = `<configuration>`
 	for key, value := range properties {
 		property := `<property>
 	<name>` + key + `</name>
@@ -40,9 +39,8 @@ func map2Xml(properties map[string]string) string {
 </property>`
 		res = res + property
 	}
-	
-	res = res + `</configuration>
-                `
+
+	res = res + `</configuration>`
 	res = xmlfmt.FormatXML(res, "", "  ")
 
 	return res

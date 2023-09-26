@@ -25,6 +25,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"reflect"
 	"strings"
 	"time"
@@ -108,11 +109,18 @@ func (r *KyuubiClusterReconciler) createOrUpdateClusters(ctx context.Context, ky
 		logger.Error(err, "Error occurred during createOrUpdateKyuubi")
 		return err
 	}
+
+	err = r.createOrUpdateService(ctx, kyuubi, logger)
+	if err != nil {
+		logger.Error(err, "Error occurred during createOrUpdateService")
+		return err
+	}
+
 	return nil
 }
 
 func (r *KyuubiClusterReconciler) constructServiceAccount(kyuubi *kyuubiv1alpha1.KyuubiCluster) (*corev1.ServiceAccount, error) {
-	saTemplate := &corev1.ServiceAccount{
+	saDesired := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kyuubi.Name + "-kyuubi",
 			Namespace: kyuubi.Namespace,
@@ -122,7 +130,12 @@ func (r *KyuubiClusterReconciler) constructServiceAccount(kyuubi *kyuubiv1alpha1
 			},
 		},
 	}
-	return saTemplate, nil
+
+	if err := ctrl.SetControllerReference(kyuubi, saDesired, r.Scheme); err != nil {
+		return saDesired, err
+	}
+
+	return saDesired, nil
 }
 
 func (r *KyuubiClusterReconciler) createOrUpdateServiceAccount(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, logger logr.Logger) error {
@@ -140,12 +153,13 @@ func (r *KyuubiClusterReconciler) createOrUpdateServiceAccount(ctx context.Conte
 			return err
 		}
 	} else if !reflect.DeepEqual(existingKyuubeSa, desiredKyuubiSa) {
-		logger.Info("updating kyuubi sa")
+		logger.Info("updating kyuubi ServiceAccount")
 	}
 	return nil
 }
+
 func (r *KyuubiClusterReconciler) constructRole(kyuubi *kyuubiv1alpha1.KyuubiCluster) (*rbacv1.Role, error) {
-	roleTemplate := &rbacv1.Role{
+	roleDesired := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kyuubi.Name + "-kyuubi",
 			Namespace: kyuubi.Namespace,
@@ -174,7 +188,12 @@ func (r *KyuubiClusterReconciler) constructRole(kyuubi *kyuubiv1alpha1.KyuubiClu
 			},
 		},
 	}
-	return roleTemplate, nil
+
+	if err := ctrl.SetControllerReference(kyuubi, roleDesired, r.Scheme); err != nil {
+		return roleDesired, err
+	}
+
+	return roleDesired, nil
 }
 
 func (r *KyuubiClusterReconciler) createOrUpdateRole(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, logger logr.Logger) error {
@@ -198,7 +217,7 @@ func (r *KyuubiClusterReconciler) createOrUpdateRole(ctx context.Context, kyuubi
 }
 
 func (r *KyuubiClusterReconciler) constructRoleBinding(kyuubi *kyuubiv1alpha1.KyuubiCluster) (*rbacv1.RoleBinding, error) {
-	roleBindingTemplate := &rbacv1.RoleBinding{
+	roleBindingDesired := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kyuubi.Name + "-kyuubi",
 			Namespace: kyuubi.Namespace,
@@ -219,15 +238,20 @@ func (r *KyuubiClusterReconciler) constructRoleBinding(kyuubi *kyuubiv1alpha1.Ky
 			Name:     kyuubi.Name + "-kyuubi",
 		},
 	}
-	return roleBindingTemplate, nil
+
+	if err := ctrl.SetControllerReference(kyuubi, roleBindingDesired, r.Scheme); err != nil {
+		return roleBindingDesired, err
+	}
+
+	return roleBindingDesired, nil
 }
 
 func (r *KyuubiClusterReconciler) createOrUpdateRoleBinding(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, logger logr.Logger) error {
 	desiredKyuubiRoleBinding, _ := r.constructRoleBinding(kyuubi)
 
-	existingKyuubeRoleBinding := &rbacv1.RoleBinding{}
+	existingKyuubiRoleBinding := &rbacv1.RoleBinding{}
 
-	err := r.Get(ctx, client.ObjectKeyFromObject(desiredKyuubiRoleBinding), existingKyuubeRoleBinding)
+	err := r.Get(ctx, client.ObjectKeyFromObject(desiredKyuubiRoleBinding), existingKyuubiRoleBinding)
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
@@ -236,7 +260,7 @@ func (r *KyuubiClusterReconciler) createOrUpdateRoleBinding(ctx context.Context,
 		if err := r.Create(ctx, desiredKyuubiRoleBinding); err != nil {
 			return err
 		}
-	} else if !reflect.DeepEqual(existingKyuubeRoleBinding, desiredKyuubiRoleBinding) {
+	} else if !reflect.DeepEqual(existingKyuubiRoleBinding, desiredKyuubiRoleBinding) {
 		logger.Info("updating kyuubi rolebinding")
 	}
 	return nil
@@ -248,21 +272,24 @@ func (r *KyuubiClusterReconciler) createOrUpdateK8sResources(ctx context.Context
 		logger.Error(err, "Error occurred during createOrUpdateServiceAccount")
 		return err
 	}
+
 	err = r.createOrUpdateRole(ctx, kyuubi, logger)
 	if err != nil {
 		logger.Error(err, "Error occurred during createOrUpdateRole")
 		return err
 	}
+
 	err = r.createOrUpdateRoleBinding(ctx, kyuubi, logger)
 	if err != nil {
 		logger.Error(err, "Error occurred during createOrUpdateRoleBinding")
 		return err
 	}
+
 	return nil
 }
 
 func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv1alpha1.KyuubiCluster) (*appsv1.StatefulSet, error) {
-	stsTemplate := &appsv1.StatefulSet{
+	stsDesired := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kyuubi.Name + "-kyuubi",
 			Namespace: kyuubi.Namespace,
@@ -302,6 +329,22 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 									ContainerPort: int32(10009),
 								},
 							},
+							LivenessProbe: &corev1.Probe{
+								ProbeHandler: corev1.ProbeHandler{
+									Exec: &corev1.ExecAction{
+										Command: []string{
+											"/bin/bash",
+											"-c",
+											"bin/kyuubi status",
+										},
+									},
+								},
+								InitialDelaySeconds: 30,
+								PeriodSeconds:       10,
+								TimeoutSeconds:      2,
+								FailureThreshold:    10,
+								SuccessThreshold:    1,
+							},
 							ReadinessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
 									Exec: &corev1.ExecAction{
@@ -311,6 +354,11 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 											"$KYUUBI_HOME/bin/kyuubi status"},
 									},
 								},
+								InitialDelaySeconds: 30,
+								PeriodSeconds:       10,
+								TimeoutSeconds:      2,
+								FailureThreshold:    10,
+								SuccessThreshold:    1,
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -430,10 +478,10 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 		},
 	}
 
-	if err := ctrl.SetControllerReference(kyuubi, stsTemplate, r.Scheme); err != nil {
-		return stsTemplate, err
+	if err := ctrl.SetControllerReference(kyuubi, stsDesired, r.Scheme); err != nil {
+		return stsDesired, err
 	}
-	return stsTemplate, nil
+	return stsDesired, nil
 }
 
 func (r *KyuubiClusterReconciler) createOrUpdateKyuubi(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, logger logr.Logger) error {
@@ -458,7 +506,7 @@ func (r *KyuubiClusterReconciler) createOrUpdateKyuubi(ctx context.Context, kyuu
 }
 
 func (r *KyuubiClusterReconciler) desiredClusterRefsConfigMap(kyuubi *kyuubiv1alpha1.KyuubiCluster) (*corev1.ConfigMap, error) {
-	cmTemplate := &corev1.ConfigMap{
+	cmDesired := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kyuubi.Name + "-clusterrefs",
 			Namespace: kyuubi.Namespace,
@@ -474,22 +522,25 @@ func (r *KyuubiClusterReconciler) desiredClusterRefsConfigMap(kyuubi *kyuubiv1al
 		switch cluster.Type {
 		case kyuubiv1alpha1.SparkClusterType:
 			sparkConf := make(map[string]string)
+			if cluster.Spark.SparkImage.Tag == "" {
+				cluster.Spark.SparkImage.Tag = "latest"
+			}
 			sparkConf["spark.kubernetes.container.image"] = cluster.Spark.SparkImage.Repository + ":" + cluster.Spark.SparkImage.Tag
 			sparkConf["spark.kubernetes.namespace"] = kyuubi.Namespace
-			cmTemplate.Data["spark-defaults.conf"] = map2String(sparkConf)
+			cmDesired.Data["spark-defaults.conf"] = map2String(sparkConf)
 		case kyuubiv1alpha1.HdfsClusterType:
-			cmTemplate.Data["hdfs-site.xml"] = map2Xml(cluster.Hdfs.HdfsSite)
-			cmTemplate.Data["core-site.xml"] = map2Xml(cluster.Hdfs.CoreSite)
+			cmDesired.Data["hdfs-site.xml"] = map2Xml(cluster.Hdfs.HdfsSite)
+			cmDesired.Data["core-site.xml"] = map2Xml(cluster.Hdfs.CoreSite)
 		case kyuubiv1alpha1.MetaStoreClusterType:
-			cmTemplate.Data["hive-site.xml"] = map2Xml(cluster.Metastore.HiveSite)
+			cmDesired.Data["hive-site.xml"] = map2Xml(cluster.Metastore.HiveSite)
 		}
 	}
 
-	if err := ctrl.SetControllerReference(kyuubi, cmTemplate, r.Scheme); err != nil {
-		return nil, err
+	if err := ctrl.SetControllerReference(kyuubi, cmDesired, r.Scheme); err != nil {
+		return cmDesired, err
 	}
 
-	return cmTemplate, nil
+	return cmDesired, nil
 }
 
 func (r *KyuubiClusterReconciler) createOrUpdateClusterRefsConfigmap(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, logger logr.Logger) error {
@@ -532,9 +583,9 @@ func (r *KyuubiClusterReconciler) createOrUpdateClusterRefsConfigmap(ctx context
 	return nil
 }
 
-func (r *KyuubiClusterReconciler) desiredKyuubiConfigMap(kyuubi *kyuubiv1alpha1.KyuubiCluster) (*corev1.ConfigMap, error) {
+func (r *KyuubiClusterReconciler) constructKyuubiConfigMap(kyuubi *kyuubiv1alpha1.KyuubiCluster) (*corev1.ConfigMap, error) {
 
-	cmTemplate := &corev1.ConfigMap{
+	cmDesired := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kyuubi.Name + "-kyuubi",
 			Namespace: kyuubi.Namespace,
@@ -548,15 +599,15 @@ func (r *KyuubiClusterReconciler) desiredKyuubiConfigMap(kyuubi *kyuubiv1alpha1.
 		},
 	}
 
-	if err := ctrl.SetControllerReference(kyuubi, cmTemplate, r.Scheme); err != nil {
-		return nil, err
+	if err := ctrl.SetControllerReference(kyuubi, cmDesired, r.Scheme); err != nil {
+		return cmDesired, err
 	}
 
-	return cmTemplate, nil
+	return cmDesired, nil
 }
 
 func (r *KyuubiClusterReconciler) createOrUpdateKyuubiConfigmap(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, logger logr.Logger) error {
-	desiredConfigMap, _ := r.desiredKyuubiConfigMap(kyuubi)
+	desiredConfigMap, _ := r.constructKyuubiConfigMap(kyuubi)
 
 	existingConfigMap := &corev1.ConfigMap{}
 	err := r.Get(ctx, client.ObjectKeyFromObject(desiredConfigMap), existingConfigMap)
@@ -565,7 +616,7 @@ func (r *KyuubiClusterReconciler) createOrUpdateKyuubiConfigmap(ctx context.Cont
 		return err
 	}
 
-	// Create or update the Service
+	// Create or update the Configmap
 	if errors.IsNotFound(err) {
 		if err := r.Create(ctx, desiredConfigMap); err != nil {
 			logger.Error(err, "Error occurred during Create configmap")
@@ -592,6 +643,69 @@ func (r *KyuubiClusterReconciler) createOrUpdateKyuubiConfigmap(ctx context.Cont
 		}
 	}
 
+	return nil
+}
+
+func (r *KyuubiClusterReconciler) contructDesiredService(kyuubi *kyuubiv1alpha1.KyuubiCluster) (*corev1.Service, error) {
+	svcDesired := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      kyuubi.Name + "-kyuubi",
+			Namespace: kyuubi.Namespace,
+			Labels: map[string]string{
+				"cluster": kyuubi.Name,
+				"app":     "kyuubi",
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeClusterIP,
+			Ports: []corev1.ServicePort{
+				{
+					Name: "rest",
+					Port: 10099,
+					TargetPort: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: int32(10099),
+					},
+				},
+				{
+					Name: "thrift-binary",
+					Port: 10009,
+					TargetPort: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: int32(10009),
+					},
+				},
+			},
+			Selector: map[string]string{
+				"cluster": kyuubi.Name,
+				"app":     "kyuubi",
+			},
+		},
+	}
+
+	if err := ctrl.SetControllerReference(kyuubi, svcDesired, r.Scheme); err != nil {
+		return svcDesired, err
+	}
+
+	return svcDesired, nil
+}
+
+func (r *KyuubiClusterReconciler) createOrUpdateService(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, logger logr.Logger) error {
+	desiredService, _ := r.contructDesiredService(kyuubi)
+
+	existingService := &corev1.Service{}
+	err := r.Get(ctx, client.ObjectKeyFromObject(desiredService), existingService)
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+
+	if errors.IsNotFound(err) {
+		if err := r.Create(ctx, desiredService); err != nil {
+			return err
+		}
+	} else if !reflect.DeepEqual(desiredService, existingService) {
+		logger.Info("updating service")
+	}
 	return nil
 }
 
