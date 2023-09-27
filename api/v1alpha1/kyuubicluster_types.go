@@ -133,7 +133,9 @@ type ExposedInfo struct {
 	Name string `json:"name"`
 	//Exposed type. Support REST and THRIFT_BINARY
 	ExposedType ExposedType `json:"exposedType"`
-	//Exposed service info
+	//Exposed service name
+	ServiceName string `json:"serviceName"`
+	//Exposed service port info
 	ServicePort corev1.ServicePort `json:"servicePort"`
 }
 

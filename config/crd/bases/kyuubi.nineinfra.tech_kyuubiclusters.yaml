@@ -185,8 +185,11 @@ spec:
                     name:
                       description: Exposed name.
                       type: string
+                    serviceName:
+                      description: Exposed service name
+                      type: string
                     servicePort:
-                      description: Exposed service info
+                      description: Exposed service port info
                       properties:
                         appProtocol:
                           description: "The application protocol for this port. This
@@ -252,6 +255,7 @@ spec:
                   required:
                   - exposedType
                   - name
+                  - serviceName
                   - servicePort
                   type: object
                 type: array

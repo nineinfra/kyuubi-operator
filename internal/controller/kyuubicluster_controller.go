@@ -129,6 +129,7 @@ func (r *KyuubiClusterReconciler) updateKyuubiClusterStatus(ctx context.Context,
 	exposedInfos := make([]kyuubiv1alpha1.ExposedInfo, 0)
 	for k, v := range kyuubiService.Spec.Ports {
 		var exposedInfo kyuubiv1alpha1.ExposedInfo
+		exposedInfo.ServiceName = kyuubiService.Name
 		exposedInfo.Name = kyuubi.Name + "-" + strconv.Itoa(k)
 		exposedInfo.ExposedType = kyuubiv1alpha1.ExposedType(v.Name)
 		v.DeepCopyInto(&exposedInfo.ServicePort)
@@ -189,8 +190,6 @@ func (r *KyuubiClusterReconciler) createOrUpdateServiceAccount(ctx context.Conte
 		if err := r.Create(ctx, desiredKyuubiSa); err != nil {
 			return err
 		}
-	} else if !reflect.DeepEqual(existingKyuubeSa, desiredKyuubiSa) {
-		logger.Info("updating kyuubi ServiceAccount")
 	}
 	return nil
 }
@@ -247,8 +246,6 @@ func (r *KyuubiClusterReconciler) createOrUpdateRole(ctx context.Context, kyuubi
 		if err := r.Create(ctx, desiredKyuubiRole); err != nil {
 			return err
 		}
-	} else if !reflect.DeepEqual(existingKyuubeRole.Rules, desiredKyuubiRole.Rules) {
-		logger.Info("updating kyuubi role")
 	}
 	return nil
 }
@@ -297,8 +294,6 @@ func (r *KyuubiClusterReconciler) createOrUpdateRoleBinding(ctx context.Context,
 		if err := r.Create(ctx, desiredKyuubiRoleBinding); err != nil {
 			return err
 		}
-	} else if !reflect.DeepEqual(existingKyuubiRoleBinding, desiredKyuubiRoleBinding) {
-		logger.Info("updating kyuubi rolebinding")
 	}
 	return nil
 }
@@ -536,8 +531,12 @@ func (r *KyuubiClusterReconciler) createOrUpdateKyuubi(ctx context.Context, kyuu
 		if err := r.Create(ctx, desiredKyuubeWorkload); err != nil {
 			return err
 		}
-	} else if !reflect.DeepEqual(existingKyuubeWorkload, desiredKyuubeWorkload) {
+	} else if !reflect.DeepEqual(existingKyuubeWorkload.Spec, desiredKyuubeWorkload.Spec) {
 		logger.Info("updating kyuubi workload")
+		err = r.Update(ctx, desiredKyuubeWorkload)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -739,12 +738,6 @@ func (r *KyuubiClusterReconciler) createOrUpdateService(ctx context.Context, kyu
 	if errors.IsNotFound(err) {
 		if err := r.Create(ctx, desiredService); err != nil {
 			return desiredService, err
-		}
-	} else if !reflect.DeepEqual(desiredService, existingService) {
-		logger.Info("updating service")
-		desiredService.Spec.DeepCopyInto(&existingService.Spec)
-		if err := r.Update(ctx, existingService); err != nil {
-			return existingService, err
 		}
 	}
 	return existingService, nil
