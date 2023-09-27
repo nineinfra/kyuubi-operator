@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -59,24 +60,32 @@ type ImageConfig struct {
 }
 
 type ResourceConfig struct {
+	// The replicas of the kyuubi cluster workload.
 	Replicas int32 `json:"replicas"`
 }
 
 type SparkCluster struct {
-	SparkMaster    string      `json:"sparkMaster,omitempty"`
-	SparkImage     ImageConfig `json:"sparkImage"`
-	SparkNamespace string      `json:"sparkNamespace"`
+	// +optional
+	// SparkMaster info. Used in the spark-submit operation
+	SparkMaster string `json:"sparkMaster,omitempty"`
+	// Spark image info.
+	SparkImage ImageConfig `json:"sparkImage"`
+	// Spark namespace.
+	SparkNamespace string `json:"sparkNamespace"`
 }
 
 type MetastoreCluster struct {
 	// +optional
+	// Hive Metastore hive-site.xml.The type of the value must be string
 	HiveSite map[string]string `json:"hiveSite,omitempty"`
 }
 
 type HdfsCluster struct {
 	// +optional
+	// HDFS core-site.xml.The type of the value must be string
 	CoreSite map[string]string `json:"coreSite,omitempty"`
 	// +optional
+	// HDFS hdfs-site.xml.The type of the value must be string
 	HdfsSite map[string]string `json:"hdfsSite,omitempty"`
 }
 
@@ -87,55 +96,53 @@ type ClusterRef struct {
 	Type ClusterType `json:"type"`
 	// ClusterInfo is the detail info of the cluster of the clustertype
 	// +optional
+	// Spark cluster infos referenced by the Kyuubi cluster
 	Spark SparkCluster `json:"spark"`
 	// +optional
+	// Metastore cluster infos referenced by the Kyuubi cluster
 	Metastore MetastoreCluster `json:"metastore"`
 	// +optional
+	// HDFS cluster infos referenced by the Kyuubi cluster
 	Hdfs HdfsCluster `json:"hdfs"`
 }
 
 // KyuubiClusterSpec defines the desired state of KyuubiCluster
 type KyuubiClusterSpec struct {
-	KyuubiVersion  string            `json:"kyuubiVersion"`
-	KyuubiImage    ImageConfig       `json:"kyuubiImage"`
-	KyuubiResource ResourceConfig    `json:"kyuubiResource"`
-	KyuubiConf     map[string]string `json:"kyuubiConf"`
-	ClusterRefs    []ClusterRef      `json:"clusterRefs"`
+	//Kyuubi version
+	KyuubiVersion string `json:"kyuubiVersion"`
+	//Kyuubi image info
+	KyuubiImage ImageConfig `json:"kyuubiImage"`
+	//Kyuubi resouce configuration
+	KyuubiResource ResourceConfig `json:"kyuubiResource"`
+	//Kyuubi configurations.These cofigurations will be injected into the kyuubi-defatuls.conf.The type of the value must be string
+	KyuubiConf  map[string]string `json:"kyuubiConf"`
+	ClusterRefs []ClusterRef      `json:"clusterRefs"`
 }
 
 type ExposedType string
 
 const (
-	KyuubiRest         ExposedType = "REST"
-	KyuubiThriftBinary ExposedType = "THRIFT_BINARY"
-	KyuubiThriftHttp   ExposedType = "THRIFT_HTTP"
-	KyuubiMysql        ExposedType = "MYSQL"
+	KyuubiRest         ExposedType = "rest"
+	KyuubiThriftBinary ExposedType = "thrift-binary"
+	KyuubiThriftHttp   ExposedType = "thrift-http"
+	KyuubiMysql        ExposedType = "mysql"
 )
 
-type K8sServiceType string
-
-const (
-	ClusterIP K8sServiceType = "ClusterIP"
-	NodePort  K8sServiceType = "NodePort"
-)
-
-type K8sService struct {
-	Name string `json:"name"`
-	// +kubebuilder:validation:Enum={spark,metastore,hdfs,flink}
-	Type K8sServiceType `json:"type"`
-	Port int            `json:"port"`
-}
 type ExposedInfo struct {
-	Name        string      `json:"name"`
+	//Exposed name.
+	Name string `json:"name"`
+	//Exposed type. Support REST and THRIFT_BINARY
 	ExposedType ExposedType `json:"exposedType"`
-	Port        int         `json:"port"`
-	Service     K8sService  `json:"service"`
+	//Exposed service info
+	ServicePort corev1.ServicePort `json:"servicePort"`
 }
 
 // KyuubiClusterStatus defines the observed state of KyuubiCluster
 type KyuubiClusterStatus struct {
+	//Kyuubi exposedinfos
 	ExposedInfos []ExposedInfo `json:"exposedInfos"`
 	CreationTime metav1.Time   `json:"creationTime"`
+	UpdateTime   metav1.Time   `json:"updateTime"`
 }
 
 //+kubebuilder:object:root=true

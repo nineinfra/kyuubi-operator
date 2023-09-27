@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -110,10 +111,46 @@ func (r *KyuubiClusterReconciler) createOrUpdateClusters(ctx context.Context, ky
 		return err
 	}
 
-	err = r.createOrUpdateService(ctx, kyuubi, logger)
+	existingService, err := r.createOrUpdateService(ctx, kyuubi, logger)
 	if err != nil {
 		logger.Error(err, "Error occurred during createOrUpdateService")
 		return err
+	}
+
+	err = r.updateKyuubiClusterStatus(ctx, kyuubi, existingService, logger)
+	if err != nil {
+		logger.Error(err, "Error occurred during updateKyuubiClusterStatus")
+		return err
+	}
+	return nil
+}
+
+func (r *KyuubiClusterReconciler) updateKyuubiClusterStatus(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, kyuubiService *corev1.Service, logger logr.Logger) error {
+	exposedInfos := make([]kyuubiv1alpha1.ExposedInfo, 0)
+	for k, v := range kyuubiService.Spec.Ports {
+		var exposedInfo kyuubiv1alpha1.ExposedInfo
+		exposedInfo.Name = kyuubi.Name + "-" + strconv.Itoa(k)
+		exposedInfo.ExposedType = kyuubiv1alpha1.ExposedType(v.Name)
+		v.DeepCopyInto(&exposedInfo.ServicePort)
+		exposedInfos = append(exposedInfos, exposedInfo)
+	}
+
+	desiredKyuubiStatus := &kyuubiv1alpha1.KyuubiClusterStatus{
+		ExposedInfos: exposedInfos,
+	}
+
+	if kyuubi.Status.ExposedInfos == nil || !reflect.DeepEqual(exposedInfos, kyuubi.Status.ExposedInfos) {
+		if kyuubi.Status.ExposedInfos == nil {
+			desiredKyuubiStatus.CreationTime = metav1.Now()
+		} else {
+			desiredKyuubiStatus.CreationTime = kyuubi.Status.CreationTime
+		}
+		desiredKyuubiStatus.UpdateTime = metav1.Now()
+		desiredKyuubiStatus.DeepCopyInto(&kyuubi.Status)
+		err := r.Status().Update(ctx, kyuubi)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -660,7 +697,7 @@ func (r *KyuubiClusterReconciler) contructDesiredService(kyuubi *kyuubiv1alpha1.
 			Type: corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
-					Name: "rest",
+					Name: string(kyuubiv1alpha1.KyuubiRest),
 					Port: 10099,
 					TargetPort: intstr.IntOrString{
 						Type:   intstr.Int,
@@ -668,7 +705,7 @@ func (r *KyuubiClusterReconciler) contructDesiredService(kyuubi *kyuubiv1alpha1.
 					},
 				},
 				{
-					Name: "thrift-binary",
+					Name: string(kyuubiv1alpha1.KyuubiThriftBinary),
 					Port: 10009,
 					TargetPort: intstr.IntOrString{
 						Type:   intstr.Int,
@@ -690,23 +727,27 @@ func (r *KyuubiClusterReconciler) contructDesiredService(kyuubi *kyuubiv1alpha1.
 	return svcDesired, nil
 }
 
-func (r *KyuubiClusterReconciler) createOrUpdateService(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, logger logr.Logger) error {
+func (r *KyuubiClusterReconciler) createOrUpdateService(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, logger logr.Logger) (*corev1.Service, error) {
 	desiredService, _ := r.contructDesiredService(kyuubi)
 
 	existingService := &corev1.Service{}
 	err := r.Get(ctx, client.ObjectKeyFromObject(desiredService), existingService)
 	if err != nil && !errors.IsNotFound(err) {
-		return err
+		return nil, err
 	}
 
 	if errors.IsNotFound(err) {
 		if err := r.Create(ctx, desiredService); err != nil {
-			return err
+			return desiredService, err
 		}
 	} else if !reflect.DeepEqual(desiredService, existingService) {
 		logger.Info("updating service")
+		desiredService.Spec.DeepCopyInto(&existingService.Spec)
+		if err := r.Update(ctx, existingService); err != nil {
+			return existingService, err
+		}
 	}
-	return nil
+	return existingService, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
