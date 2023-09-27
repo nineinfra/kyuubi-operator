@@ -78,7 +78,7 @@ func (r *KyuubiClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		logger.Info("create Or Update Clusters")
 		err = r.createOrUpdateClusters(ctx, &kyuubi, logger)
 		if err != nil {
-			logger.Info("Error occurred during create Or Update Components")
+			logger.Info("Error occurred during create Or Update CLusters")
 			return ctrl.Result{}, err
 		}
 	}
@@ -247,7 +247,7 @@ func (r *KyuubiClusterReconciler) createOrUpdateRole(ctx context.Context, kyuubi
 		if err := r.Create(ctx, desiredKyuubiRole); err != nil {
 			return err
 		}
-	} else if !reflect.DeepEqual(existingKyuubeRole, desiredKyuubiRole) {
+	} else if !reflect.DeepEqual(existingKyuubeRole.Rules, desiredKyuubiRole.Rules) {
 		logger.Info("updating kyuubi role")
 	}
 	return nil
