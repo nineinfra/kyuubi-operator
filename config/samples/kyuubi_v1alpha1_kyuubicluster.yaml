@@ -11,7 +11,7 @@ metadata:
 spec:
   kyuubiVersion: 1.8.1
   kyuubiImage:
-    repository: 172.18.123.24:30003/library/kyuubi
+    repository: nineinfra/kyuubi
     tag: v1.8.1
   kyuubiResource:
     replicas: 1
@@ -30,7 +30,7 @@ spec:
       spark:
         sparkMaster: k8s
         sparkImage:
-          repository: 172.18.123.24:30003/library/spark
+          repository: nineinfra/spark
           tag: v3.2.4
         sparkNamespace: dwh
     - name: hdfs
