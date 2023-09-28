@@ -1,0 +1,9 @@
+apiVersion: v2
+appVersion: 0.18.1
+description: The Kyuubi Operator for Apache Kyuubi
+home: https://github.com/nineinfra/kyuubi-operator
+maintainers:
+- name: nineinfra
+  url: https://github.com/nineinfra
+name: kyuubi-operator
+version: v0.18.1
