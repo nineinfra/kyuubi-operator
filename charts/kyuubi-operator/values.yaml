@@ -46,4 +46,5 @@ tolerations: []
 affinity: {}
 
 env:
-  ENABLE_WEBHOOKS: false
+  - name: ENABLE_WEBHOOKS
+    value: "false"
