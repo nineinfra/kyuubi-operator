@@ -1,48 +1,162 @@
 # kyuubi-operator
-// TODO(user): Add simple overview of use/purpose
+This is a Kubernetes Operator to manage Apache Kyuubi
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+The kyuubi-operator is an important part of the Nineinfra Data Platform, a curated combination of open-source projects 
+including Spark, Flink, HDFS, Kafka, ClickHouse, Kyuubi, and Superset, all working together seamlessly to provide users 
+with a stable and user-friendly big data processing platform. Nineinfra is a full-stack data platform built on Kubernetes, 
+capable of running on public cloud, private cloud, or on-premises environments.
 
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
 **Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
 
-### Running on the cluster
-1. Install Instances of Custom Resources:
+### Installing on a kubernetes cluster
+Install kyuubi operator by helm:
 
 ```sh
-kubectl apply -k config/samples/
+helm repo add kyuubi-operator https://nineinfra.github.io/kyuubi-operator/
+kubectl create namespace kyuubi-operator
+helm install kyuubi-operator kyuubi-operator/kyuubi-operator --version 0.18.1 -n kyuubi-operator
 ```
-
-2. Build and push your image to the location specified by `IMG`:
-
+### Deploying a kyuubi cluster by kyuubi-operator
+1. Obtain the necessary configuration information, including HDFS cluster, Metastore cluster, and Spark cluster configuration information.
+example:
 ```sh
-make docker-build docker-push IMG=<some-registry>/kyuubi-operator:tag
+kubectl get svc -n dwh |grep hdfs
+hdfs              ClusterIP   10.100.208.68    <none>        9820/TCP,9870/TCP,9871/TCP    
+                              
+kubectl get svc -n dwh |grep metastore
+hive-metastore    ClusterIP   10.100.90.209    <none>        9083/TCP
 ```
+And the service of hdfs is hdfs with the suffix .dwh.svc,the service of the metastore is the hive-metastore with the suffix .dwh.svc
 
-3. Deploy the controller to the cluster with the image specified by `IMG`:
-
+2. Edit the cr yaml, there is a sample file like config/samples/kyuubi_v1alpha1_kyuubicluster.yaml 
+```yaml
+apiVersion: kyuubi.nineinfra.tech/v1alpha1
+kind: KyuubiCluster
+metadata:
+  labels:
+    app.kubernetes.io/name: kyuubicluster
+    app.kubernetes.io/instance: kyuubicluster-sample
+    app.kubernetes.io/part-of: kyuubi-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: kyuubi-operator
+  name: kyuubicluster-sample
+spec:
+  kyuubiVersion: 1.8.1
+  kyuubiImage:
+    repository: nineinfra/kyuubi
+    tag: v1.8.1
+  kyuubiResource:
+    replicas: 1
+  kyuubiConf:
+    kyuubi.kubernetes.namespace: dwh
+    kyuubi.frontend.connection.url.use.hostname: 'false'
+    kyuubi.frontend.thrift.binary.bind.port: '10009'
+    kyuubi.frontend.thrift.http.bind.port: '10010'
+    kyuubi.frontend.rest.bind.port: '10099'
+    kyuubi.frontend.mysql.bind.port: '3309'
+    kyuubi.frontend.protocols: REST,THRIFT_BINARY
+    kyuubi.metrics.enabled: 'false'
+  clusterRefs:
+    - name: spark
+      type: spark
+      spark:
+        sparkMaster: k8s
+        sparkImage:
+          repository: nineinfra/spark
+          tag: v3.2.4
+        sparkNamespace: dwh
+    - name: hdfs
+      type: hdfs
+      hdfs:
+        coreSite:
+          fs.defaultFS: hdfs://hdfs.dwh.svc:9820
+        hdfsSite:
+          dfs.client.block.write.retries: '3'
+    - name: metastore
+      type: metastore
+      metastore:
+        hiveSite:
+          hive.metastore.uris: thrift://hive-metastore.dwh.svc:9083
+          hive.metastore.warehouse.dir: /user/hive/warehouse
+```
+3. Deploy a kyuubi cluster
 ```sh
-make deploy IMG=<some-registry>/kyuubi-operator:tag
+kubectl apply -f kyuubi_v1alpha1_kyuubicluster.yaml -n kyuubi-operator
 ```
-
-### Uninstall CRDs
-To delete the CRDs from the cluster:
-
+4. Get status of the kyuubi cluster,you can access the kyuubi cluster with the service in the output 
 ```sh
-make uninstall
+kubectl get kyuubicluster kyuubicluster-sample -n kyuubi-operator -o yaml
+
+status:
+  creationTime: "2023-09-28T06:11:18Z"
+  exposedInfos:
+  - exposedType: rest
+    name: kyuubicluster-sample-0
+    serviceName: kyuubicluster-sample-kyuubi
+    servicePort:
+      name: rest
+      port: 10099
+      protocol: TCP
+      targetPort: 10099
+  - exposedType: thrift-binary
+    name: kyuubicluster-sample-1
+    serviceName: kyuubicluster-sample-kyuubi
+    servicePort:
+      name: thrift-binary
+      port: 10009
+      protocol: TCP
+      targetPort: 10009
+  updateTime: "2023-09-28T06:11:18Z"
 ```
 
-### Undeploy controller
-UnDeploy the controller from the cluster:
-
+### Executing some example sql statements
+1. Login the kyuubi pod
 ```sh
-make undeploy
-```
+kubectl get pod -n kyuubi-operator
+NAME                                                                                                                              READY   STATUS      RESTARTS   AGE
+kyuubi-kyuubi-user-spark-sql-anonymous-default-2f33bda8-a9b0-4584-a726-1d653c809d15-2f33bda8-a9b0-4584-a726-1d653c809d15-exec-1   0/1     Completed   0          92m
+kyuubi-kyuubi-user-spark-sql-anonymous-default-2f33bda8-a9b0-4584-a726-1d653c809d15-2f33bda8-a9b0-4584-a726-1d653c809d15-exec-2   0/1     Completed   0          92m
+kyuubi-operator-deployment-57b54cbc6-fc8bz                                                                                        1/1     Running     0          85m
+kyuubicluster-sample-kyuubi-0                                                                                                     1/1     Running     0          83m
 
+kubectl exec -it kyuubicluster-sample-kyuubi-0 -n kyuubi-operator -- bash
+```
+2. Run beeline command
+```sh
+kyuubi@kyuubicluster-sample-kyuubi-0:/opt/kyuubi$ cd bin
+kyuubi@kyuubicluster-sample-kyuubi-0:/opt/kyuubi/bin$ ./beeline
+Warn: Not find kyuubi environment file /opt/kyuubi/conf/kyuubi-env.sh, using default ones...
+Beeline version 1.8.0-SNAPSHOT by Apache Kyuubi
+beeline> 
+```
+3. Connect the kyuubi cluster by the thrift-binary protocol through the service kyuubicluster-sample-kyuubi
+```sh
+beeline> !connect jdbc:hive2://kyuubicluster-sample-kyuubi:10009
+```
+4. Execute some example sql statements
+```sh
+0: jdbc:hive2://kyuubicluster-sample-kyuubi:1> show databases;
++------------+
+| namespace  |
++------------+
+| default    |
+| test       |
++------------+
+0: jdbc:hive2://kyuubicluster-sample-kyuubi:1> use test;
+0: jdbc:hive2://kyuubicluster-sample-kyuubi:1> create table test3 (name string,id int);
+0: jdbc:hive2://kyuubicluster-sample-kyuubi:1> insert into test3 values("kyuubi",1);
+0: jdbc:hive2://kyuubicluster-sample-kyuubi:1> select * from test3;
++---------+-----+
+|  name   | id  |
++---------+-----+
+| kyuubi  | 1   |
++---------+-----+
+```
 ## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
+Contributions are highly welcomed and appreciated.
 
 ### How it works
 This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
