@@ -15,9 +15,9 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 Install kyuubi operator by helm:
 
 ```sh
-helm repo add kyuubi-operator https://nineinfra.github.io/kyuubi-operator/
+helm repo add nineinfra-charts https://nineinfra.github.io/nineinfra-charts/
 kubectl create namespace kyuubi-operator
-helm install kyuubi-operator kyuubi-operator/kyuubi-operator --version 0.18.1 -n kyuubi-operator
+helm install kyuubi-operator nineinfra-charts/kyuubi-operator --version 0.18.1 -n kyuubi-operator
 ```
 ### Deploying a kyuubi cluster by kyuubi-operator
 1. Obtain the necessary configuration information, including HDFS cluster, Metastore cluster, and Spark cluster configuration information.
