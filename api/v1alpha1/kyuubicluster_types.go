@@ -72,6 +72,8 @@ type SparkCluster struct {
 	SparkImage ImageConfig `json:"sparkImage"`
 	// Spark namespace.
 	SparkNamespace string `json:"sparkNamespace"`
+	// Spark defaults conf
+	SparkDefaults map[string]string `json:"sparkDefaults"`
 }
 
 type MetastoreCluster struct {

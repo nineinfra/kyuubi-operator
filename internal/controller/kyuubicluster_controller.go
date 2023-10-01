@@ -563,6 +563,9 @@ func (r *KyuubiClusterReconciler) desiredClusterRefsConfigMap(kyuubi *kyuubiv1al
 			}
 			sparkConf["spark.kubernetes.container.image"] = cluster.Spark.SparkImage.Repository + ":" + cluster.Spark.SparkImage.Tag
 			sparkConf["spark.kubernetes.namespace"] = kyuubi.Namespace
+			for k, v := range cluster.Spark.SparkDefaults {
+				sparkConf[k] = v
+			}
 			cmDesired.Data["spark-defaults.conf"] = map2String(sparkConf)
 		case kyuubiv1alpha1.HdfsClusterType:
 			cmDesired.Data["hdfs-site.xml"] = map2Xml(cluster.Hdfs.HdfsSite)
