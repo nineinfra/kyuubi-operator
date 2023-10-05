@@ -349,8 +349,9 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  kyuubi.Name,
-							Image: kyuubi.Spec.KyuubiImage.Repository + ":" + kyuubi.Spec.KyuubiImage.Tag,
+							Name:            kyuubi.Name,
+							Image:           kyuubi.Spec.KyuubiImage.Repository + ":" + kyuubi.Spec.KyuubiImage.Tag,
+							ImagePullPolicy: corev1.PullPolicy(kyuubi.Spec.KyuubiImage.PullPolicy),
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "rest",

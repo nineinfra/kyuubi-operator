@@ -1,0 +1,53 @@
+apiVersion: kyuubi.nineinfra.tech/v1alpha1
+kind: KyuubiCluster
+metadata:
+  labels:
+    app.kubernetes.io/name: kyuubicluster
+    app.kubernetes.io/instance: kyuubicluster-sample
+    app.kubernetes.io/part-of: kyuubi-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: kyuubi-operator
+  name: kyuubicluster-sample
+spec:
+  kyuubiVersion: 1.8.1
+  kyuubiImage:
+    repository: nineinfra/kyuubi
+    tag: v1.8.1-minio
+  kyuubiResource:
+    replicas: 1
+  kyuubiConf:
+    kyuubi.kubernetes.namespace: dwh
+    kyuubi.frontend.connection.url.use.hostname: 'false'
+    kyuubi.frontend.thrift.binary.bind.port: '10009'
+    kyuubi.frontend.thrift.http.bind.port: '10010'
+    kyuubi.frontend.rest.bind.port: '10099'
+    kyuubi.frontend.mysql.bind.port: '3309'
+    kyuubi.frontend.protocols: REST,THRIFT_BINARY
+    kyuubi.metrics.enabled: 'false'
+  clusterRefs:
+    - name: spark
+      type: spark
+      spark:
+        sparkMaster: k8s
+        sparkImage:
+          repository: nineinfra/spark
+          tag: v3.2.4-minio
+        sparkNamespace: dwh
+        sparkDefaults:
+          spark.hadoop.fs.s3a.access.key: 984GcQyUWobTVl3B
+          spark.hadoop.fs.s3a.secret.key: wE5ffRYxSacalsYT5UAVgo1AMlK2uune
+          spark.hadoop.fs.s3a.path.style.access: "true"
+          spark.hadoop.fs.s3a.connection.ssl.enabled: "false"
+          spark.hadoop.fs.s3a.endpoint: http://192.168.123.24:31063
+    - name: hdfs
+      type: hdfs
+      hdfs:
+        coreSite:
+        hdfsSite:
+          dfs.client.block.write.retries: '3'
+    - name: metastore
+      type: metastore
+      metastore:
+        hiveSite:
+          hive.metastore.uris: thrift://hive-postgres-s3.dwh.svc:9083
+          hive.metastore.warehouse.dir: s3://usr/hive/warehouse
