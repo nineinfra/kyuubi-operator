@@ -75,10 +75,10 @@ func (r *KyuubiClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	requestName := requestArray[1]
 
 	if requestName == kyuubi.Name {
-		logger.Info("create Or Update Clusters")
+		logger.Info("create or update clusters")
 		err = r.createOrUpdateClusters(ctx, &kyuubi, logger)
 		if err != nil {
-			logger.Info("Error occurred during create Or Update CLusters")
+			logger.Info("Error occurred during create or update clusters")
 			return ctrl.Result{}, err
 		}
 	}
@@ -111,13 +111,13 @@ func (r *KyuubiClusterReconciler) createOrUpdateClusters(ctx context.Context, ky
 		return err
 	}
 
-	existingService, err := r.createOrUpdateService(ctx, kyuubi, logger)
+	existingService, err := r.createOrUpdateService(ctx, kyuubi)
 	if err != nil {
 		logger.Error(err, "Error occurred during createOrUpdateService")
 		return err
 	}
 
-	err = r.updateKyuubiClusterStatus(ctx, kyuubi, existingService, logger)
+	err = r.updateKyuubiClusterStatus(ctx, kyuubi, existingService)
 	if err != nil {
 		logger.Error(err, "Error occurred during updateKyuubiClusterStatus")
 		return err
@@ -125,7 +125,7 @@ func (r *KyuubiClusterReconciler) createOrUpdateClusters(ctx context.Context, ky
 	return nil
 }
 
-func (r *KyuubiClusterReconciler) updateKyuubiClusterStatus(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, kyuubiService *corev1.Service, logger logr.Logger) error {
+func (r *KyuubiClusterReconciler) updateKyuubiClusterStatus(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, kyuubiService *corev1.Service) error {
 	exposedInfos := make([]kyuubiv1alpha1.ExposedInfo, 0)
 	for k, v := range kyuubiService.Spec.Ports {
 		var exposedInfo kyuubiv1alpha1.ExposedInfo
@@ -176,7 +176,7 @@ func (r *KyuubiClusterReconciler) constructServiceAccount(kyuubi *kyuubiv1alpha1
 	return saDesired, nil
 }
 
-func (r *KyuubiClusterReconciler) createOrUpdateServiceAccount(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, logger logr.Logger) error {
+func (r *KyuubiClusterReconciler) createOrUpdateServiceAccount(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster) error {
 	desiredKyuubiSa, _ := r.constructServiceAccount(kyuubi)
 
 	existingKyuubeSa := &corev1.ServiceAccount{}
@@ -232,7 +232,7 @@ func (r *KyuubiClusterReconciler) constructRole(kyuubi *kyuubiv1alpha1.KyuubiClu
 	return roleDesired, nil
 }
 
-func (r *KyuubiClusterReconciler) createOrUpdateRole(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, logger logr.Logger) error {
+func (r *KyuubiClusterReconciler) createOrUpdateRole(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster) error {
 	desiredKyuubiRole, _ := r.constructRole(kyuubi)
 
 	existingKyuubeRole := &rbacv1.Role{}
@@ -280,7 +280,7 @@ func (r *KyuubiClusterReconciler) constructRoleBinding(kyuubi *kyuubiv1alpha1.Ky
 	return roleBindingDesired, nil
 }
 
-func (r *KyuubiClusterReconciler) createOrUpdateRoleBinding(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, logger logr.Logger) error {
+func (r *KyuubiClusterReconciler) createOrUpdateRoleBinding(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster) error {
 	desiredKyuubiRoleBinding, _ := r.constructRoleBinding(kyuubi)
 
 	existingKyuubiRoleBinding := &rbacv1.RoleBinding{}
@@ -299,19 +299,19 @@ func (r *KyuubiClusterReconciler) createOrUpdateRoleBinding(ctx context.Context,
 }
 
 func (r *KyuubiClusterReconciler) createOrUpdateK8sResources(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, logger logr.Logger) error {
-	err := r.createOrUpdateServiceAccount(ctx, kyuubi, logger)
+	err := r.createOrUpdateServiceAccount(ctx, kyuubi)
 	if err != nil {
 		logger.Error(err, "Error occurred during createOrUpdateServiceAccount")
 		return err
 	}
 
-	err = r.createOrUpdateRole(ctx, kyuubi, logger)
+	err = r.createOrUpdateRole(ctx, kyuubi)
 	if err != nil {
 		logger.Error(err, "Error occurred during createOrUpdateRole")
 		return err
 	}
 
-	err = r.createOrUpdateRoleBinding(ctx, kyuubi, logger)
+	err = r.createOrUpdateRoleBinding(ctx, kyuubi)
 	if err != nil {
 		logger.Error(err, "Error occurred during createOrUpdateRoleBinding")
 		return err
@@ -730,7 +730,7 @@ func (r *KyuubiClusterReconciler) contructDesiredService(kyuubi *kyuubiv1alpha1.
 	return svcDesired, nil
 }
 
-func (r *KyuubiClusterReconciler) createOrUpdateService(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, logger logr.Logger) (*corev1.Service, error) {
+func (r *KyuubiClusterReconciler) createOrUpdateService(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster) (*corev1.Service, error) {
 	desiredService, _ := r.contructDesiredService(kyuubi)
 
 	existingService := &corev1.Service{}
