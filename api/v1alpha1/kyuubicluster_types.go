@@ -149,6 +149,7 @@ type KyuubiClusterStatus struct {
 	UpdateTime   metav1.Time   `json:"updateTime"`
 }
 
+// +genclient
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
