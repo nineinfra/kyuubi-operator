@@ -68,10 +68,13 @@ type SparkCluster struct {
 	// +optional
 	// SparkMaster info. Used in the spark-submit operation
 	SparkMaster string `json:"sparkMaster,omitempty"`
+	// +optional
 	// Spark image info.
 	SparkImage ImageConfig `json:"sparkImage"`
+	// +optional
 	// Spark namespace.
 	SparkNamespace string `json:"sparkNamespace"`
+	// +optional
 	// Spark defaults conf
 	SparkDefaults map[string]string `json:"sparkDefaults"`
 }

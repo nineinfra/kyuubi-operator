@@ -108,10 +108,6 @@ spec:
                         sparkNamespace:
                           description: Spark namespace.
                           type: string
-                      required:
-                      - sparkDefaults
-                      - sparkImage
-                      - sparkNamespace
                       type: object
                     type:
                       enum:
