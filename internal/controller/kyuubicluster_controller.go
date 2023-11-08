@@ -220,6 +220,7 @@ func (r *KyuubiClusterReconciler) constructRole(kyuubi *kyuubiv1alpha1.KyuubiClu
 					"list",
 					"delete",
 					"watch",
+					"deletecollection",
 				},
 			},
 		},
