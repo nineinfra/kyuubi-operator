@@ -3,7 +3,7 @@
 image:
   repository: nineinfra/kyuubi-operator
   pullPolicy: IfNotPresent
-  tag: v0.18.1
+  tag: v0.181.4
 
 imagePullSecrets: []
 nameOverride: ""
