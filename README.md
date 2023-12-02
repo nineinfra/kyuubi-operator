@@ -1,9 +1,9 @@
 # kyuubi-operator
-This is a Kubernetes Operator to manage Apache Kyuubi
+This is a Kubernetes Operator to manage Apache Kyuubi.
 
 ## Description
-The kyuubi-operator is an important part of the Nineinfra Data Platform, a curated combination of open-source projects 
-including Spark, Flink, HDFS, Kafka, ClickHouse, Kyuubi, and Superset, all working together seamlessly to provide users 
+The kyuubi-operator is an important part of the NineInfra Data Platform, a curated combination of open-source projects 
+including Spark, Flink, Minio, Kafka, ClickHouse, Kyuubi, and Superset, all working together seamlessly to provide users 
 with a stable and user-friendly big data processing platform. Nineinfra is a full-stack data platform built on Kubernetes, 
 capable of running on public cloud, private cloud, or on-premises environments.
 
