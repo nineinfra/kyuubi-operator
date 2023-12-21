@@ -18,12 +18,13 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"reflect"
@@ -64,7 +65,7 @@ func (r *KyuubiClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	var kyuubi kyuubiv1alpha1.KyuubiCluster
 	err := r.Get(ctx, req.NamespacedName, &kyuubi)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			logger.Info("Object not found, it could have been deleted")
 		} else {
 			logger.Info("Error occurred during fetching the object")
@@ -182,11 +183,11 @@ func (r *KyuubiClusterReconciler) createOrUpdateServiceAccount(ctx context.Conte
 	existingKyuubeSa := &corev1.ServiceAccount{}
 
 	err := r.Get(ctx, client.ObjectKeyFromObject(desiredKyuubiSa), existingKyuubeSa)
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
 
-	if errors.IsNotFound(err) {
+	if k8serrors.IsNotFound(err) {
 		if err := r.Create(ctx, desiredKyuubiSa); err != nil {
 			return err
 		}
@@ -239,11 +240,11 @@ func (r *KyuubiClusterReconciler) createOrUpdateRole(ctx context.Context, kyuubi
 	existingKyuubeRole := &rbacv1.Role{}
 
 	err := r.Get(ctx, client.ObjectKeyFromObject(desiredKyuubiRole), existingKyuubeRole)
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
 
-	if errors.IsNotFound(err) {
+	if k8serrors.IsNotFound(err) {
 		if err := r.Create(ctx, desiredKyuubiRole); err != nil {
 			return err
 		}
@@ -287,11 +288,11 @@ func (r *KyuubiClusterReconciler) createOrUpdateRoleBinding(ctx context.Context,
 	existingKyuubiRoleBinding := &rbacv1.RoleBinding{}
 
 	err := r.Get(ctx, client.ObjectKeyFromObject(desiredKyuubiRoleBinding), existingKyuubiRoleBinding)
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
 
-	if errors.IsNotFound(err) {
+	if k8serrors.IsNotFound(err) {
 		if err := r.Create(ctx, desiredKyuubiRoleBinding); err != nil {
 			return err
 		}
@@ -525,11 +526,11 @@ func (r *KyuubiClusterReconciler) createOrUpdateKyuubi(ctx context.Context, kyuu
 	existingKyuubeWorkload := &appsv1.StatefulSet{}
 
 	err := r.Get(ctx, client.ObjectKeyFromObject(desiredKyuubeWorkload), existingKyuubeWorkload)
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
 
-	if errors.IsNotFound(err) {
+	if k8serrors.IsNotFound(err) {
 		if err := r.Create(ctx, desiredKyuubeWorkload); err != nil {
 			return err
 		}
@@ -565,6 +566,9 @@ func (r *KyuubiClusterReconciler) desiredClusterRefsConfigMap(kyuubi *kyuubiv1al
 			}
 			sparkConf["spark.kubernetes.container.image"] = cluster.Spark.SparkImage.Repository + ":" + cluster.Spark.SparkImage.Tag
 			sparkConf["spark.kubernetes.namespace"] = kyuubi.Namespace
+			if cluster.Spark.SparkDefaults == nil {
+				return nil, errors.New("spark default conf should not be nil")
+			}
 			for k, v := range cluster.Spark.SparkDefaults {
 				sparkConf[k] = v
 			}
@@ -585,17 +589,20 @@ func (r *KyuubiClusterReconciler) desiredClusterRefsConfigMap(kyuubi *kyuubiv1al
 }
 
 func (r *KyuubiClusterReconciler) createOrUpdateClusterRefsConfigmap(ctx context.Context, kyuubi *kyuubiv1alpha1.KyuubiCluster, logger logr.Logger) error {
-	desiredConfigMap, _ := r.desiredClusterRefsConfigMap(kyuubi)
+	desiredConfigMap, err := r.desiredClusterRefsConfigMap(kyuubi)
+	if err != nil {
+		return err
+	}
 
 	existingConfigMap := &corev1.ConfigMap{}
-	err := r.Get(ctx, client.ObjectKeyFromObject(desiredConfigMap), existingConfigMap)
-	if err != nil && !errors.IsNotFound(err) {
+	err = r.Get(ctx, client.ObjectKeyFromObject(desiredConfigMap), existingConfigMap)
+	if err != nil && !k8serrors.IsNotFound(err) {
 		logger.Error(err, "Error occurred during Get configmap")
 		return err
 	}
 
 	// Create or update the Service
-	if errors.IsNotFound(err) {
+	if k8serrors.IsNotFound(err) {
 		if err := r.Create(ctx, desiredConfigMap); err != nil {
 			logger.Error(err, "Error occurred during Create configmap")
 			return err
@@ -603,10 +610,10 @@ func (r *KyuubiClusterReconciler) createOrUpdateClusterRefsConfigmap(ctx context
 		for {
 			existingConfigMap := &corev1.ConfigMap{}
 			err := r.Get(ctx, client.ObjectKeyFromObject(desiredConfigMap), existingConfigMap)
-			if err != nil && !errors.IsNotFound(err) {
+			if err != nil && !k8serrors.IsNotFound(err) {
 				return err
 			}
-			if errors.IsNotFound(err) {
+			if k8serrors.IsNotFound(err) {
 				logger.Info("waiting to create cluster config ...")
 				time.Sleep(100 * time.Millisecond)
 			} else {
@@ -652,13 +659,13 @@ func (r *KyuubiClusterReconciler) createOrUpdateKyuubiConfigmap(ctx context.Cont
 
 	existingConfigMap := &corev1.ConfigMap{}
 	err := r.Get(ctx, client.ObjectKeyFromObject(desiredConfigMap), existingConfigMap)
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !k8serrors.IsNotFound(err) {
 		logger.Error(err, "Error occurred during Get configmap")
 		return err
 	}
 
 	// Create or update the Configmap
-	if errors.IsNotFound(err) {
+	if k8serrors.IsNotFound(err) {
 		if err := r.Create(ctx, desiredConfigMap); err != nil {
 			logger.Error(err, "Error occurred during Create configmap")
 			return err
@@ -666,10 +673,10 @@ func (r *KyuubiClusterReconciler) createOrUpdateKyuubiConfigmap(ctx context.Cont
 		for {
 			existingConfigMap := &corev1.ConfigMap{}
 			err := r.Get(ctx, client.ObjectKeyFromObject(desiredConfigMap), existingConfigMap)
-			if err != nil && !errors.IsNotFound(err) {
+			if err != nil && !k8serrors.IsNotFound(err) {
 				return err
 			}
-			if errors.IsNotFound(err) {
+			if k8serrors.IsNotFound(err) {
 				logger.Info("waiting to create cluster config ...")
 				time.Sleep(100 * time.Millisecond)
 			} else {
@@ -736,11 +743,11 @@ func (r *KyuubiClusterReconciler) createOrUpdateService(ctx context.Context, kyu
 
 	existingService := &corev1.Service{}
 	err := r.Get(ctx, client.ObjectKeyFromObject(desiredService), existingService)
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !k8serrors.IsNotFound(err) {
 		return nil, err
 	}
 
-	if errors.IsNotFound(err) {
+	if k8serrors.IsNotFound(err) {
 		if err := r.Create(ctx, desiredService); err != nil {
 			return desiredService, err
 		}
