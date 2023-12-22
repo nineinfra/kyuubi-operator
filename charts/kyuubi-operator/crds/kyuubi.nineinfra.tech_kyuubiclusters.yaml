@@ -72,6 +72,11 @@ spec:
                         the clustertype Spark cluster infos referenced by the Kyuubi
                         cluster
                       properties:
+                        sparkDefaults:
+                          additionalProperties:
+                            type: string
+                          description: Spark defaults conf
+                          type: object
                         sparkImage:
                           description: Spark image info.
                           properties:
@@ -103,9 +108,6 @@ spec:
                         sparkNamespace:
                           description: Spark namespace.
                           type: string
-                      required:
-                      - sparkImage
-                      - sparkNamespace
                       type: object
                     type:
                       enum:
