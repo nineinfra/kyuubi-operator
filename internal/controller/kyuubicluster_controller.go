@@ -217,6 +217,7 @@ func (r *KyuubiClusterReconciler) constructRole(kyuubi *kyuubiv1alpha1.KyuubiClu
 					"persistentvolumeclaims",
 				},
 				Verbs: []string{
+					"get",
 					"create",
 					"list",
 					"delete",
