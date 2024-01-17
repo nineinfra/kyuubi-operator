@@ -365,6 +365,7 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 									ContainerPort: int32(10009),
 								},
 							},
+							Env: DefaultDownwardAPI(),
 							LivenessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
 									Exec: &corev1.ExecAction{
@@ -399,28 +400,28 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      kyuubi.Name + "-kyuubi",
-									MountPath: "/opt/kyuubi/conf/kyuubi-defaults.conf",
-									SubPath:   "kyuubi-defaults.conf",
+									MountPath: fmt.Sprintf("%s/%s", DefaultKyuubiConfDir, DefaultKyuubiConfFile),
+									SubPath:   DefaultKyuubiConfFile,
 								},
 								{
 									Name:      kyuubi.Name + "-spark",
-									MountPath: "/opt/spark/conf/spark-defaults.conf",
-									SubPath:   "spark-defaults.conf",
+									MountPath: fmt.Sprintf("%s/%s", DefaultSparkConfDir, DefaultSparkConfFile),
+									SubPath:   DefaultSparkConfFile,
 								},
 								{
 									Name:      kyuubi.Name + "-hdfssite",
-									MountPath: "/opt/spark/conf/hdfs-site.xml",
-									SubPath:   "hdfs-site.xml",
+									MountPath: fmt.Sprintf("%s/%s", DefaultSparkConfDir, DefaultHdfsSiteFile),
+									SubPath:   DefaultHdfsSiteFile,
 								},
 								{
 									Name:      kyuubi.Name + "-coresite",
-									MountPath: "/opt/spark/conf/core-site.xml",
-									SubPath:   "core-site.xml",
+									MountPath: fmt.Sprintf("%s/%s", DefaultSparkConfDir, DefaultCoreSiteFile),
+									SubPath:   DefaultCoreSiteFile,
 								},
 								{
 									Name:      kyuubi.Name + "-hivesite",
-									MountPath: "/opt/spark/conf/hive-site.xml",
-									SubPath:   "hive-site.xml",
+									MountPath: fmt.Sprintf("%s/%s", DefaultSparkConfDir, DefaultHiveSiteFile),
+									SubPath:   DefaultHiveSiteFile,
 								},
 							},
 						},
@@ -437,8 +438,8 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 									},
 									Items: []corev1.KeyToPath{
 										{
-											Key:  "kyuubi-defaults.conf",
-											Path: "kyuubi-defaults.conf",
+											Key:  DefaultKyuubiConfFile,
+											Path: DefaultKyuubiConfFile,
 										},
 									},
 								},
@@ -453,8 +454,8 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 									},
 									Items: []corev1.KeyToPath{
 										{
-											Key:  "spark-defaults.conf",
-											Path: "spark-defaults.conf",
+											Key:  DefaultSparkConfFile,
+											Path: DefaultSparkConfFile,
 										},
 									},
 								},
@@ -469,8 +470,8 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 									},
 									Items: []corev1.KeyToPath{
 										{
-											Key:  "hdfs-site.xml",
-											Path: "hdfs-site.xml",
+											Key:  DefaultHdfsSiteFile,
+											Path: DefaultHdfsSiteFile,
 										},
 									},
 								},
@@ -485,8 +486,8 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 									},
 									Items: []corev1.KeyToPath{
 										{
-											Key:  "core-site.xml",
-											Path: "core-site.xml",
+											Key:  DefaultCoreSiteFile,
+											Path: DefaultCoreSiteFile,
 										},
 									},
 								},
@@ -501,8 +502,8 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 									},
 									Items: []corev1.KeyToPath{
 										{
-											Key:  "hive-site.xml",
-											Path: "hive-site.xml",
+											Key:  DefaultHiveSiteFile,
+											Path: DefaultHiveSiteFile,
 										},
 									},
 								},
@@ -573,7 +574,7 @@ func (r *KyuubiClusterReconciler) desiredClusterRefsConfigMap(kyuubi *kyuubiv1al
 			for k, v := range cluster.Spark.SparkDefaults {
 				sparkConf[k] = v
 			}
-			cmDesired.Data["spark-defaults.conf"] = map2String(sparkConf)
+			cmDesired.Data[DefaultSparkConfFile] = map2String(sparkConf)
 		case kyuubiv1alpha1.HdfsClusterType:
 			cmDesired.Data["hdfs-site.xml"] = map2Xml(cluster.Hdfs.HdfsSite)
 			cmDesired.Data["core-site.xml"] = map2Xml(cluster.Hdfs.CoreSite)
@@ -644,7 +645,7 @@ func (r *KyuubiClusterReconciler) constructKyuubiConfigMap(kyuubi *kyuubiv1alpha
 			},
 		},
 		Data: map[string]string{
-			"kyuubi-defaults.conf": map2String(kyuubi.Spec.KyuubiConf),
+			DefaultKyuubiConfFile: map2String(kyuubi.Spec.KyuubiConf),
 		},
 	}
 
