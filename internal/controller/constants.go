@@ -30,4 +30,10 @@ const (
 
 	// DefaultClusterSign is the default cluster sign of the hdfs
 	DefaultClusterSign = "kyuubi"
+
+	// FSDefaultFSConfKey is the fs default fs conf key of the hdfs
+	FSDefaultFSConfKey = "fs.defaultFS"
+
+	// DFSNameSpacesConfKey is the dfs nameservices conf key of the hdfs
+	DFSNameSpacesConfKey = "dfs.nameservices"
 )

@@ -537,7 +537,13 @@ func (r *KyuubiClusterReconciler) desiredClusterRefsConfigMap(kyuubi *kyuubiv1al
 		},
 		Data: map[string]string{},
 	}
-
+	var hdfsSite, coreSite map[string]string
+	for _, cluster := range kyuubi.Spec.ClusterRefs {
+		if cluster.Type == kyuubiv1alpha1.HdfsClusterType {
+			hdfsSite = cluster.Hdfs.HdfsSite
+			coreSite = cluster.Hdfs.CoreSite
+		}
+	}
 	for _, cluster := range kyuubi.Spec.ClusterRefs {
 		switch cluster.Type {
 		case kyuubiv1alpha1.SparkClusterType:
@@ -558,7 +564,33 @@ func (r *KyuubiClusterReconciler) desiredClusterRefsConfigMap(kyuubi *kyuubiv1al
 			cmDesired.Data["hdfs-site.xml"] = map2Xml(cluster.Hdfs.HdfsSite)
 			cmDesired.Data["core-site.xml"] = map2Xml(cluster.Hdfs.CoreSite)
 		case kyuubiv1alpha1.MetaStoreClusterType:
-			cmDesired.Data["hive-site.xml"] = map2Xml(cluster.Metastore.HiveSite)
+			clusterConf := make(map[string]string, 0)
+			if coreSite != nil {
+				if _, ok := coreSite[FSDefaultFSConfKey]; ok {
+					clusterConf[FSDefaultFSConfKey] = coreSite[FSDefaultFSConfKey]
+				}
+			}
+			if hdfsSite != nil {
+				if _, ok := hdfsSite[DFSNameSpacesConfKey]; ok {
+					clusterConf[DFSNameSpacesConfKey] = hdfsSite[DFSNameSpacesConfKey]
+					if _, ok := hdfsSite[fmt.Sprintf("dfs.ha.namenodes.%s", clusterConf[DFSNameSpacesConfKey])]; ok {
+						clusterConf[fmt.Sprintf("dfs.ha.namenodes.%s", clusterConf[DFSNameSpacesConfKey])] = hdfsSite[fmt.Sprintf("dfs.ha.namenodes.%s", clusterConf[DFSNameSpacesConfKey])]
+						clusterConf[fmt.Sprintf("dfs.client.failover.proxy.provider.%s", clusterConf[DFSNameSpacesConfKey])] = "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider"
+						nameNodes := hdfsSite[fmt.Sprintf("dfs.ha.namenodes.%s", clusterConf[DFSNameSpacesConfKey])]
+						nameNodeList := strings.Split(nameNodes, ",")
+						for _, v := range nameNodeList {
+							clusterConf[fmt.Sprintf("dfs.namenode.rpc-address.%s.%s", clusterConf[DFSNameSpacesConfKey], v)] = hdfsSite[fmt.Sprintf("dfs.namenode.rpc-address.%s.%s", clusterConf[DFSNameSpacesConfKey], v)]
+						}
+					} else {
+						clusterConf[fmt.Sprintf("dfs.namenode.rpc-address.%s", clusterConf[DFSNameSpacesConfKey])] = hdfsSite[fmt.Sprintf("dfs.namenode.rpc-address.%s", clusterConf[DFSNameSpacesConfKey])]
+					}
+				}
+			}
+
+			for k, v := range cluster.Metastore.HiveSite {
+				clusterConf[k] = v
+			}
+			cmDesired.Data["hive-site.xml"] = map2Xml(clusterConf)
 		}
 	}
 
