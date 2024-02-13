@@ -1,6 +1,10 @@
 package controller
 
-import corev1 "k8s.io/api/core/v1"
+import (
+	kyuubiv1alpha1 "github.com/nineinfra/kyuubi-operator/api/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	"strings"
+)
 
 func DefaultDownwardAPI() []corev1.EnvVar {
 	return []corev1.EnvVar{
@@ -44,5 +48,16 @@ func DefaultDownwardAPI() []corev1.EnvVar {
 				},
 			},
 		},
+	}
+}
+
+func ClusterResourceName(cluster *kyuubiv1alpha1.KyuubiCluster, suffixs ...string) string {
+	return cluster.Name + DefaultNameSuffix + strings.Join(suffixs, "-")
+}
+
+func ClusterResourceLabels(cluster *kyuubiv1alpha1.KyuubiCluster) map[string]string {
+	return map[string]string{
+		"cluster": cluster.Name,
+		"app":     DefaultClusterSign,
 	}
 }

@@ -161,12 +161,9 @@ func (r *KyuubiClusterReconciler) updateKyuubiClusterStatus(ctx context.Context,
 func (r *KyuubiClusterReconciler) constructServiceAccount(kyuubi *kyuubiv1alpha1.KyuubiCluster) (*corev1.ServiceAccount, error) {
 	saDesired := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kyuubi.Name + "-kyuubi",
+			Name:      ClusterResourceName(kyuubi),
 			Namespace: kyuubi.Namespace,
-			Labels: map[string]string{
-				"cluster": kyuubi.Name,
-				"app":     "kyuubi",
-			},
+			Labels:    ClusterResourceLabels(kyuubi),
 		},
 	}
 
@@ -198,12 +195,9 @@ func (r *KyuubiClusterReconciler) createOrUpdateServiceAccount(ctx context.Conte
 func (r *KyuubiClusterReconciler) constructRole(kyuubi *kyuubiv1alpha1.KyuubiCluster) (*rbacv1.Role, error) {
 	roleDesired := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kyuubi.Name + "-kyuubi",
+			Name:      ClusterResourceName(kyuubi),
 			Namespace: kyuubi.Namespace,
-			Labels: map[string]string{
-				"cluster": kyuubi.Name,
-				"app":     "kyuubi",
-			},
+			Labels:    ClusterResourceLabels(kyuubi),
 		},
 		Rules: []rbacv1.PolicyRule{
 			{
@@ -256,23 +250,20 @@ func (r *KyuubiClusterReconciler) createOrUpdateRole(ctx context.Context, kyuubi
 func (r *KyuubiClusterReconciler) constructRoleBinding(kyuubi *kyuubiv1alpha1.KyuubiCluster) (*rbacv1.RoleBinding, error) {
 	roleBindingDesired := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kyuubi.Name + "-kyuubi",
+			Name:      ClusterResourceName(kyuubi),
 			Namespace: kyuubi.Namespace,
-			Labels: map[string]string{
-				"cluster": kyuubi.Name,
-				"app":     "kyuubi",
-			},
+			Labels:    ClusterResourceLabels(kyuubi),
 		},
 		Subjects: []rbacv1.Subject{
 			{
 				Kind: "ServiceAccount",
-				Name: kyuubi.Name + "-kyuubi",
+				Name: ClusterResourceName(kyuubi),
 			},
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
 			Kind:     "Role",
-			Name:     kyuubi.Name + "-kyuubi",
+			Name:     ClusterResourceName(kyuubi),
 		},
 	}
 
@@ -326,28 +317,19 @@ func (r *KyuubiClusterReconciler) createOrUpdateK8sResources(ctx context.Context
 func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv1alpha1.KyuubiCluster) (*appsv1.StatefulSet, error) {
 	stsDesired := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kyuubi.Name + "-kyuubi",
+			Name:      ClusterResourceName(kyuubi),
 			Namespace: kyuubi.Namespace,
-			Labels: map[string]string{
-				"cluster": kyuubi.Name,
-				"app":     "kyuubi",
-			},
+			Labels:    ClusterResourceLabels(kyuubi),
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"cluster": kyuubi.Name,
-					"app":     "kyuubi",
-				},
+				MatchLabels: ClusterResourceLabels(kyuubi),
 			},
-			ServiceName: kyuubi.Name + "-kyuubi",
+			ServiceName: ClusterResourceName(kyuubi),
 			Replicas:    int32Ptr(kyuubi.Spec.KyuubiResource.Replicas),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"cluster": kyuubi.Name,
-						"app":     "kyuubi",
-					},
+					Labels: ClusterResourceLabels(kyuubi),
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -399,7 +381,7 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      kyuubi.Name + "-kyuubi",
+									Name:      ClusterResourceName(kyuubi),
 									MountPath: fmt.Sprintf("%s/%s", DefaultKyuubiConfDir, DefaultKyuubiConfFile),
 									SubPath:   DefaultKyuubiConfFile,
 								},
@@ -427,14 +409,14 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 						},
 					},
 					RestartPolicy:      corev1.RestartPolicyAlways,
-					ServiceAccountName: kyuubi.Name + "-kyuubi",
+					ServiceAccountName: ClusterResourceName(kyuubi),
 					Volumes: []corev1.Volume{
 						{
-							Name: kyuubi.Name + "-kyuubi",
+							Name: ClusterResourceName(kyuubi),
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: kyuubi.Name + "-kyuubi",
+										Name: ClusterResourceName(kyuubi),
 									},
 									Items: []corev1.KeyToPath{
 										{
@@ -450,7 +432,7 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: kyuubi.Name + "-clusterrefs",
+										Name: ClusterResourceName(kyuubi, DefaultClusterRefsNameSuffix),
 									},
 									Items: []corev1.KeyToPath{
 										{
@@ -466,7 +448,7 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: kyuubi.Name + "-clusterrefs",
+										Name: ClusterResourceName(kyuubi, DefaultClusterRefsNameSuffix),
 									},
 									Items: []corev1.KeyToPath{
 										{
@@ -482,7 +464,7 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: kyuubi.Name + "-clusterrefs",
+										Name: ClusterResourceName(kyuubi, DefaultClusterRefsNameSuffix),
 									},
 									Items: []corev1.KeyToPath{
 										{
@@ -498,7 +480,7 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: kyuubi.Name + "-clusterrefs",
+										Name: ClusterResourceName(kyuubi, DefaultClusterRefsNameSuffix),
 									},
 									Items: []corev1.KeyToPath{
 										{
@@ -549,12 +531,9 @@ func (r *KyuubiClusterReconciler) createOrUpdateKyuubi(ctx context.Context, kyuu
 func (r *KyuubiClusterReconciler) desiredClusterRefsConfigMap(kyuubi *kyuubiv1alpha1.KyuubiCluster) (*corev1.ConfigMap, error) {
 	cmDesired := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kyuubi.Name + "-clusterrefs",
+			Name:      ClusterResourceName(kyuubi, DefaultClusterRefsNameSuffix),
 			Namespace: kyuubi.Namespace,
-			Labels: map[string]string{
-				"cluster": kyuubi.Name,
-				"app":     kyuubi.Name,
-			},
+			Labels:    ClusterResourceLabels(kyuubi),
 		},
 		Data: map[string]string{},
 	}
@@ -637,12 +616,9 @@ func (r *KyuubiClusterReconciler) constructKyuubiConfigMap(kyuubi *kyuubiv1alpha
 
 	cmDesired := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kyuubi.Name + "-kyuubi",
+			Name:      ClusterResourceName(kyuubi),
 			Namespace: kyuubi.Namespace,
-			Labels: map[string]string{
-				"cluster": kyuubi.Name,
-				"app":     "kyuubi",
-			},
+			Labels:    ClusterResourceLabels(kyuubi),
 		},
 		Data: map[string]string{
 			DefaultKyuubiConfFile: map2String(kyuubi.Spec.KyuubiConf),
@@ -699,12 +675,9 @@ func (r *KyuubiClusterReconciler) createOrUpdateKyuubiConfigmap(ctx context.Cont
 func (r *KyuubiClusterReconciler) contructDesiredService(kyuubi *kyuubiv1alpha1.KyuubiCluster) (*corev1.Service, error) {
 	svcDesired := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kyuubi.Name + "-kyuubi",
+			Name:      ClusterResourceName(kyuubi),
 			Namespace: kyuubi.Namespace,
-			Labels: map[string]string{
-				"cluster": kyuubi.Name,
-				"app":     "kyuubi",
-			},
+			Labels:    ClusterResourceLabels(kyuubi),
 		},
 		Spec: corev1.ServiceSpec{
 			Type: corev1.ServiceTypeClusterIP,
@@ -726,10 +699,7 @@ func (r *KyuubiClusterReconciler) contructDesiredService(kyuubi *kyuubiv1alpha1.
 					},
 				},
 			},
-			Selector: map[string]string{
-				"cluster": kyuubi.Name,
-				"app":     "kyuubi",
-			},
+			Selector: ClusterResourceLabels(kyuubi),
 		},
 	}
 
