@@ -2,7 +2,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "operator.fullname" . }}-clusterrole
+  name: {{ include "operator.fullname" . }}
 rules:
   - apiGroups:
       - ""
@@ -97,12 +97,12 @@ rules:
     verbs:
       - bind
     resourceNames:
-      - {{ include "operator.name" . }}-clusterrole
+      - {{ include "operator.name" . }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "operator.name" . }}-clusterrole
+  name: {{ include "operator.name" . }}
 rules:
   - apiGroups:
       - ""

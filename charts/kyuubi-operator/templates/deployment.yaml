@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "operator.fullname" . }}-deployment
+  name: {{ include "operator.fullname" . }}
   labels:
     {{- include "operator.labels" . | nindent 4 }}
 spec:
@@ -26,7 +26,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "operator.fullname" . }}-serviceaccount
+      serviceAccountName: {{ include "operator.fullname" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -40,12 +40,12 @@ spec:
           env:
             {{- toYaml .Values.env | nindent 12 }}
           volumeMounts:
-            - mountPath: /etc/nineinfra/{{ include "operator.appname" . }}/config-spec
-              name: config-spec
+            - mountPath: /etc/{{ include "operator.appname" . }}
+              name: config
       volumes:
-        - name: config-spec
+        - name: config
           configMap:
-            name: {{ include "operator.fullname" . }}-configmap
+            name: {{ include "operator.fullname" . }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

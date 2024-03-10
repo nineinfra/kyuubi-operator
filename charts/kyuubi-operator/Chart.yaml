@@ -6,4 +6,4 @@ maintainers:
 - name: nineinfra
   url: https://github.com/nineinfra
 name: kyuubi-operator
-version: v0.7.0
+version: v0.8.0
