@@ -51,6 +51,10 @@ func DefaultDownwardAPI() []corev1.EnvVar {
 	}
 }
 
+func NineResourceName(cluster *kyuubiv1alpha1.KyuubiCluster, suffixs ...string) string {
+	return cluster.Name + strings.Join(suffixs, "-")
+}
+
 func ClusterResourceName(cluster *kyuubiv1alpha1.KyuubiCluster, suffixs ...string) string {
 	return cluster.Name + DefaultNameSuffix + strings.Join(suffixs, "-")
 }

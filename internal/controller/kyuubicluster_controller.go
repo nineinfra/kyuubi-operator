@@ -27,6 +27,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -314,6 +315,139 @@ func (r *KyuubiClusterReconciler) createOrUpdateK8sResources(ctx context.Context
 	return nil
 }
 
+func (r *KyuubiClusterReconciler) constructVolumeMounts(kyuubi *kyuubiv1alpha1.KyuubiCluster) []corev1.VolumeMount {
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      ClusterResourceName(kyuubi),
+			MountPath: fmt.Sprintf("%s/%s", DefaultKyuubiConfDir, DefaultKyuubiConfFile),
+			SubPath:   DefaultKyuubiConfFile,
+		},
+	}
+	for _, cluster := range kyuubi.Spec.ClusterRefs {
+		switch cluster.Type {
+		case kyuubiv1alpha1.SparkClusterType:
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name:      kyuubi.Name + "-spark",
+				MountPath: fmt.Sprintf("%s/%s", DefaultSparkConfDir, DefaultSparkConfFile),
+				SubPath:   DefaultSparkConfFile,
+			})
+		case kyuubiv1alpha1.HdfsClusterType:
+			volumeMounts = append(volumeMounts,
+				corev1.VolumeMount{
+					Name:      kyuubi.Name + "-hdfssite",
+					MountPath: fmt.Sprintf("%s/%s", DefaultSparkConfDir, DefaultHdfsSiteFile),
+					SubPath:   DefaultHdfsSiteFile,
+				},
+				corev1.VolumeMount{
+					Name:      kyuubi.Name + "-coresite",
+					MountPath: fmt.Sprintf("%s/%s", DefaultSparkConfDir, DefaultCoreSiteFile),
+					SubPath:   DefaultCoreSiteFile,
+				})
+		case kyuubiv1alpha1.MetaStoreClusterType:
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name:      kyuubi.Name + "-hivesite",
+				MountPath: fmt.Sprintf("%s/%s", DefaultSparkConfDir, DefaultHiveSiteFile),
+				SubPath:   DefaultHiveSiteFile,
+			})
+		}
+	}
+	return volumeMounts
+}
+
+func (r *KyuubiClusterReconciler) constructVolumes(kyuubi *kyuubiv1alpha1.KyuubiCluster) []corev1.Volume {
+	volumes := []corev1.Volume{
+		{
+			Name: ClusterResourceName(kyuubi),
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: ClusterResourceName(kyuubi),
+					},
+					Items: []corev1.KeyToPath{
+						{
+							Key:  DefaultKyuubiConfFile,
+							Path: DefaultKyuubiConfFile,
+						},
+					},
+				},
+			},
+		}}
+	for _, cluster := range kyuubi.Spec.ClusterRefs {
+		switch cluster.Type {
+		case kyuubiv1alpha1.SparkClusterType:
+			volumes = append(volumes, corev1.Volume{
+				Name: kyuubi.Name + "-spark",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: NineResourceName(kyuubi, DefaultClusterRefsNameSuffix),
+						},
+						Items: []corev1.KeyToPath{
+							{
+								Key:  DefaultSparkConfFile,
+								Path: DefaultSparkConfFile,
+							},
+						},
+					},
+				},
+			})
+		case kyuubiv1alpha1.HdfsClusterType:
+			volumes = append(volumes,
+				corev1.Volume{
+					Name: kyuubi.Name + "-hdfssite",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: NineResourceName(kyuubi, DefaultClusterRefsNameSuffix),
+							},
+							Items: []corev1.KeyToPath{
+								{
+									Key:  DefaultHdfsSiteFile,
+									Path: DefaultHdfsSiteFile,
+								},
+							},
+						},
+					},
+				},
+				corev1.Volume{
+					Name: kyuubi.Name + "-coresite",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: NineResourceName(kyuubi, DefaultClusterRefsNameSuffix),
+							},
+							Items: []corev1.KeyToPath{
+								{
+									Key:  DefaultCoreSiteFile,
+									Path: DefaultCoreSiteFile,
+								},
+							},
+						},
+					},
+				},
+			)
+		case kyuubiv1alpha1.MetaStoreClusterType:
+			volumes = append(volumes, corev1.Volume{
+				Name: kyuubi.Name + "-hivesite",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: NineResourceName(kyuubi, DefaultClusterRefsNameSuffix),
+						},
+						Items: []corev1.KeyToPath{
+							{
+								Key:  DefaultHiveSiteFile,
+								Path: DefaultHiveSiteFile,
+							},
+						},
+					},
+				},
+			})
+		}
+	}
+	return volumes
+}
+
 func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv1alpha1.KyuubiCluster) (*appsv1.StatefulSet, error) {
 	stsDesired := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -379,119 +513,12 @@ func (r *KyuubiClusterReconciler) constructDesiredKyuubiWorkload(kyuubi *kyuubiv
 								FailureThreshold:    10,
 								SuccessThreshold:    1,
 							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      ClusterResourceName(kyuubi),
-									MountPath: fmt.Sprintf("%s/%s", DefaultKyuubiConfDir, DefaultKyuubiConfFile),
-									SubPath:   DefaultKyuubiConfFile,
-								},
-								{
-									Name:      kyuubi.Name + "-spark",
-									MountPath: fmt.Sprintf("%s/%s", DefaultSparkConfDir, DefaultSparkConfFile),
-									SubPath:   DefaultSparkConfFile,
-								},
-								{
-									Name:      kyuubi.Name + "-hdfssite",
-									MountPath: fmt.Sprintf("%s/%s", DefaultSparkConfDir, DefaultHdfsSiteFile),
-									SubPath:   DefaultHdfsSiteFile,
-								},
-								{
-									Name:      kyuubi.Name + "-coresite",
-									MountPath: fmt.Sprintf("%s/%s", DefaultSparkConfDir, DefaultCoreSiteFile),
-									SubPath:   DefaultCoreSiteFile,
-								},
-								{
-									Name:      kyuubi.Name + "-hivesite",
-									MountPath: fmt.Sprintf("%s/%s", DefaultSparkConfDir, DefaultHiveSiteFile),
-									SubPath:   DefaultHiveSiteFile,
-								},
-							},
+							VolumeMounts: r.constructVolumeMounts(kyuubi),
 						},
 					},
 					RestartPolicy:      corev1.RestartPolicyAlways,
 					ServiceAccountName: ClusterResourceName(kyuubi),
-					Volumes: []corev1.Volume{
-						{
-							Name: ClusterResourceName(kyuubi),
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: ClusterResourceName(kyuubi),
-									},
-									Items: []corev1.KeyToPath{
-										{
-											Key:  DefaultKyuubiConfFile,
-											Path: DefaultKyuubiConfFile,
-										},
-									},
-								},
-							},
-						},
-						{
-							Name: kyuubi.Name + "-spark",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: ClusterResourceName(kyuubi, DefaultClusterRefsNameSuffix),
-									},
-									Items: []corev1.KeyToPath{
-										{
-											Key:  DefaultSparkConfFile,
-											Path: DefaultSparkConfFile,
-										},
-									},
-								},
-							},
-						},
-						{
-							Name: kyuubi.Name + "-hdfssite",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: ClusterResourceName(kyuubi, DefaultClusterRefsNameSuffix),
-									},
-									Items: []corev1.KeyToPath{
-										{
-											Key:  DefaultHdfsSiteFile,
-											Path: DefaultHdfsSiteFile,
-										},
-									},
-								},
-							},
-						},
-						{
-							Name: kyuubi.Name + "-coresite",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: ClusterResourceName(kyuubi, DefaultClusterRefsNameSuffix),
-									},
-									Items: []corev1.KeyToPath{
-										{
-											Key:  DefaultCoreSiteFile,
-											Path: DefaultCoreSiteFile,
-										},
-									},
-								},
-							},
-						},
-						{
-							Name: kyuubi.Name + "-hivesite",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: ClusterResourceName(kyuubi, DefaultClusterRefsNameSuffix),
-									},
-									Items: []corev1.KeyToPath{
-										{
-											Key:  DefaultHiveSiteFile,
-											Path: DefaultHiveSiteFile,
-										},
-									},
-								},
-							},
-						},
-					},
+					Volumes:            r.constructVolumes(kyuubi),
 				},
 			},
 		},
@@ -531,7 +558,7 @@ func (r *KyuubiClusterReconciler) createOrUpdateKyuubi(ctx context.Context, kyuu
 func (r *KyuubiClusterReconciler) desiredClusterRefsConfigMap(kyuubi *kyuubiv1alpha1.KyuubiCluster) (*corev1.ConfigMap, error) {
 	cmDesired := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ClusterResourceName(kyuubi, DefaultClusterRefsNameSuffix),
+			Name:      NineResourceName(kyuubi, DefaultClusterRefsNameSuffix),
 			Namespace: kyuubi.Namespace,
 			Labels:    ClusterResourceLabels(kyuubi),
 		},
@@ -551,6 +578,7 @@ func (r *KyuubiClusterReconciler) desiredClusterRefsConfigMap(kyuubi *kyuubiv1al
 			if cluster.Spark.SparkImage.Tag == "" {
 				cluster.Spark.SparkImage.Tag = "latest"
 			}
+			sparkConf["spark.master"] = fmt.Sprintf("k8s://https://%s:%s", os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT"))
 			sparkConf["spark.kubernetes.container.image"] = cluster.Spark.SparkImage.Repository + ":" + cluster.Spark.SparkImage.Tag
 			sparkConf["spark.kubernetes.namespace"] = kyuubi.Namespace
 			if cluster.Spark.SparkDefaults == nil {
